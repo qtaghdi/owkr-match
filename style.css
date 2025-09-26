@@ -1,0 +1,40 @@
+:root{--bg:#0b0c10;--card:#151821;--muted:#9aa1b2;--text:#e6e9ef;--accent:#6c8cff;--line:#222838;--btn:#1e2230;--btnh:#23283a;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(180deg,#0c0f17 0%,#0b0c10 100%);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+.container{max-width:1100px;margin:32px auto;padding:0 20px}
+.h1{font-weight:700;font-size:22px;letter-spacing:.2px;margin:0 0 18px}
+.sub{color:var(--muted);font-size:13px;margin-bottom:18px}
+.section-title{font-size: 16px; margin-top: 10px; margin-bottom: 10px;}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
+.grid{display:grid;gap:12px}
+.grid-5{grid-template-columns:1.5fr repeat(3,1fr) 100px}
+label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
+input,select,textarea{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:#0f121a;color:var(--text);outline:none}
+input:focus,select:focus,textarea:focus{border-color:#3a4060}
+.btn{border:1px solid var(--line);background:var(--btn);color:var(--text);padding:10px 14px;border-radius:12px;cursor:pointer;transition:.15s}
+.btn:hover{background:var(--btnh)}
+.btn.primary{background:var(--accent);border-color:transparent;color:#fff}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:end}
+.row.gap{gap:8px}
+.table{width:100%;border-collapse:collapse}
+.table th,.table td{padding:12px;border-bottom:1px solid var(--line);text-align:left;font-size:14px}
+.table th{color:var(--muted);font-weight:600}
+.right{text-align:right}
+.kbd{background:#0e1220;border:1px solid var(--line);padding:3px 6px;border-radius:6px;font-size:12px;color:var(--muted)}
+.badge{display:inline-block;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:#0f1321;color:var(--muted);font-size:12px}
+.muted{color:var(--muted);font-size:12px}
+
+/* 대진 명단 */
+.match{display:grid;grid-template-columns:1fr 80px 1fr;gap:16px;align-items:center;margin-bottom:40px}
+.team-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
+.team-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.team-title h3{margin:0;font-size:16px}
+.team-title .avg{font-size:12px;color:var(--muted)}
+.vs{display:flex;align-items:center;justify-content:center;gap:6px;color:var(--muted)}
+.vs-badge{border:1px solid var(--line);background:#0f1321;border-radius:999px;padding:10px 14px;font-weight:700}
+.roster{width:100%;border-collapse:collapse}
+.roster th,.roster td{border-bottom:1px solid var(--line);padding:10px;font-size:14px}
+.roster th{color:var(--muted);width:90px}
+.name{font-weight:600}
+.rank{opacity:.9}
+.diff{font-size:12px;color:var(--muted);text-align:center}

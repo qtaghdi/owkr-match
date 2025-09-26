@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>OWKR 내전 매칭 시스템</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+<div class="container">
+  <div class="h1">OWKR 내전 팀 구성</div>
+  <div class="sub">티어를 기준으로 10명을 5:5 최적 분할합니다.</div>
+
+  <div class="section-title">플레이어 추가(폼)</div>
+  <div class="card grid grid-5">
+    <div><label>닉네임</label><input id="nameInput" placeholder="닉네임(예: 상만#12345)"></div>
+    <div class="grid"><label>탱커</label><div class="row gap"><select id="tankTier"></select><select id="tankDiv"></select></div></div>
+    <div class="grid"><label>딜러</label><div class="row gap"><select id="dpsTier"></select><select id="dpsDiv"></select></div></div>
+    <div class="grid"><label>힐러</label><div class="row gap"><select id="supTier"></select><select id="supDiv"></select></div></div>
+    <div><label>&nbsp;</label><button class="btn primary" id="addRow">추가</button></div>
+  </div>
+
+  <div class="section-title">플레이어 추가(붙여넣기)</div>
+  <div class="card">
+    <label>형식: <span class="kbd">닉네임#태그 /다5/플3/실2</span> 또는 <span class="kbd">닉#태그 / 탱 다5 / 딜 골2 / 힐 플4</span></label>
+    <textarea id="pasteBox" rows="4" placeholder="여러 줄 붙여넣기 가능&#10;예)&#10;DIANACOURTNY#3748 / 탱 다5 / 딜 골2 / 힐 플4&#10;Yechan#31311 탱 골2 / 딜 플3 / 힐 실1"></textarea>
+    <div class="row" style="margin-top:10px">
+      <button class="btn" id="parseAdd">파싱해서 추가</button>
+      <span class="kbd">라벨: 탱/tank/t, 딜/dps/d, 힐/sup/support/s · 티어 약어: 브/실/골/플/플레/다/마/그마/챔 + 1~5</span>
+    </div>
+  </div>
+
+  <div class="section-title">플레이어 목록</div>
+  <div class="card">
+    <table class="table" id="playersTable">
+      <thead><tr><th>닉네임</th><th>탱커</th><th>딜러</th><th>힐러</th><th class="right">액션</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="muted" style="margin-top:8px">현재 인원: <span id="count">0</span> / 10</div>
+  </div>
+
+  <div class="row" style="margin-top:14px">
+    <button class="btn primary" id="runBtn">팀짜기</button>
+    <span class="kbd">정확히 10명일 때만 실행됩니다</span>
+  </div>
+
+  <div class="section-title">대진 명단</div>
+  <div id="match" class="match"></div>
+
+</div>
+<script src="script.js"></script>
+</body>
+</html>
