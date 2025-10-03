@@ -31,19 +31,46 @@ function rankScoreText(s){
 function permute(a){const r=[],u=Array(a.length).fill(false),c=[];(function bt(){if(c.length===a.length){r.push(c.slice());return}for(let i=0;i<a.length;i++){if(u[i])continue;u[i]=true;c.push(a[i]);bt();c.pop();u[i]=false}})();return r}
 function assignRoles(team){
   let best=null;
-  for(const perm of permute(team)){
-    const assign={TANK:[],DPS:[],SUPPORT:[]}; let total=0; let ok=true;
-    for(let i=0;i<TEAM_SIZE;i++){
-      const role=ROLE_SLOTS[i], p=perm[i];
-      const val=role==="TANK"?rankScoreText(p.tank_rank):role==="DPS"?rankScoreText(p.dps_rank):rankScoreText(p.support_rank);
-      if(val<=0){ok=false;break}
-      assign[role].push([p,val]); total+=val;
-    }
-    if(!ok) continue;
-    if(!best||total>best.total) best={total,assign};
+
+  function cmpPriority(a, b){
+    if (a.sumT !== b.sumT) return a.sumT - b.sumT;       // 1순위: TANK 합
+    if (a.sumD !== b.sumD) return a.sumD - b.sumD;       // 2순위: DPS 합
+    if (a.sumS !== b.sumS) return a.sumS - b.sumS;       // 3순위: SUPPORT 합
+    return 0;
   }
-  return best?best.assign:null;
+
+  for (const perm of permute(team)){
+    const assign={TANK:[],DPS:[],SUPPORT:[]};
+    let ok=true, sumT=0, sumD=0, sumS=0;
+
+    for (let i=0;i<TEAM_SIZE;i++){
+      const role=ROLE_SLOTS[i], p=perm[i];
+      const val = role==="TANK" ? rankScoreText(p.tank_rank)
+                : role==="DPS" ? rankScoreText(p.dps_rank)
+                                : rankScoreText(p.support_rank);
+      if (val<=0){ ok=false; break; }
+      assign[role].push([p,val]);
+      if (role==="TANK") sumT+=val; else if (role==="DPS") sumD+=val; else sumS+=val;
+    }
+    if (!ok) continue;
+
+    const cur = { sumT, sumD, sumS, assign };
+    if (!best || cmpPriority(cur, best) > 0) best = cur;
+  }
+
+  return best ? best.assign : null;
 }
+
+function teamPriorityValue(assign){
+  // 우선도 점수: 탱 합*1e6 + 딜 합*1e3 + 힐 합
+  let sumT=0,sumD=0,sumS=0;
+  for (const [,v] of assign.TANK) sumT+=v;
+  for (const [,v] of assign.DPS)  sumD+=v;
+  for (const [,v] of assign.SUPPORT) sumS+=v;
+  return { value: sumT*1e6 + sumD*1e3 + sumS, sumT, sumD, sumS };
+}
+
+
 function teamAvg(assign){
   const sum=[...assign.TANK,...assign.DPS,...assign.SUPPORT].reduce((s, [,m])=>s+m,0);
   return sum/TEAM_SIZE;
@@ -55,23 +82,38 @@ function chooseIndices(n,k,start=0,prev=[],out=[]){
   for(let i=start;i<=n-(k-prev.length);i++) chooseIndices(n,k,i+1,[...prev,i],out);
   return out;
 }
+
 function bestSplit10(players){
   const n=players.length;
   if(n!==10) return null;
+
   const allA=chooseIndices(10,5);
   let best=null;
-  for(const idxs of allA){
+
+  for (const idxs of allA){
     const inA=new Set(idxs);
     const A=idxs.map(i=>players[i]);
     const B=players.filter((_,i)=>!inA.has(i));
+
     const aAssign=assignRoles(A); if(!aAssign) continue;
     const bAssign=assignRoles(B); if(!bAssign) continue;
-    const aAvg=teamAvg(aAssign), bAvg=teamAvg(bAssign);
-    const score=Math.abs(aAvg-bAvg);
-    if(!best || score<best.score) best={score,aAssign,bAssign,aAvg,bAvg};
+
+    const aP = teamPriorityValue(aAssign);
+    const bP = teamPriorityValue(bAssign);
+
+    const diff = Math.abs(aP.value - bP.value); // 우선도 점수 차 최소화
+    if (!best || diff < best.diff) {
+      best = {
+        teams: [aAssign,bAssign],
+        priVals: [aP.value, bP.value],
+        sums: [{T:aP.sumT, D:aP.sumD, S:aP.sumS}, {T:bP.sumT, D:bP.sumD, S:bP.sumS}],
+        diff
+      };
+    }
   }
-  return best?{teams:[best.aAssign,best.bAssign], avgs:[best.aAvg,best.bAvg], diff:best.score}:null;
+  return best;
 }
+
 
 /* DOM + 파서 */
 function el(tag,attrs={},children=[]){const e=document.createElement(tag);for(const[k,v]of Object.entries(attrs)){if(k==="class")e.className=v;else if(k==="text")e.textContent=v;else e.setAttribute(k,v)}for(const c of children)e.appendChild(c);return e}
@@ -160,44 +202,36 @@ function parseAdd(){
 }
 
 /* 대진 명단 렌더링 (표) */
-function renderMatch(teams, avgs, diff){
+function renderMatch(teams, priVals, diff, sums){
   const root=document.getElementById("match");
   root.innerHTML="";
-
-  const labels=[
-    ["TANK","탱커"],
-    ["DPS1","딜러 1"],
-    ["DPS2","딜러 2"],
-    ["SUP1","힐러 1"],
-    ["SUP2","힐러 2"]
-  ];
 
   function splitRoles(assign){
     return {
       tank: assign.TANK.map(([p])=>p),
-      dps: assign.DPS.map(([p])=>p),
-      sup: assign.SUPPORT.map(([p])=>p)
+      dps:  assign.DPS.map(([p])=>p),
+      sup:  assign.SUPPORT.map(([p])=>p)
     };
   }
-  function rowFor(roleKey, teamParts){
-    const [key, label]=roleKey;
+  function rowFor(key, parts){
     let p, role;
-    if(key==="TANK"){ p=teamParts.tank[0]; role="tank_rank"; }
-    if(key==="DPS1"){ p=teamParts.dps[0]; role="dps_rank"; }
-    if(key==="DPS2"){ p=teamParts.dps[1]; role="dps_rank"; }
-    if(key==="SUP1"){ p=teamParts.sup[0]; role="support_rank"; }
-    if(key==="SUP2"){ p=teamParts.sup[1]; role="support_rank"; }
+    if(key==="TANK"){ p=parts.tank[0]; role="tank_rank"; }
+    if(key==="DPS1"){ p=parts.dps[0];  role="dps_rank"; }
+    if(key==="DPS2"){ p=parts.dps[1];  role="dps_rank"; }
+    if(key==="SUP1"){ p=parts.sup[0];  role="support_rank"; }
+    if(key==="SUP2"){ p=parts.sup[1];  role="support_rank"; }
     if(!p) return ["-","-"];
     return [p.name, p[role]];
   }
 
-  function teamCard(assign, title, avg){
+  function teamCard(assign, title, priVal, sumObj){
     const parts=splitRoles(assign);
     const card=el("div",{class:"team-card"});
     const head=el("div",{class:"team-title"},[
       el("h3",{text:title}),
-      el("div",{class:"avg",text:`평균 점수 ${avg.toFixed(1)}`})
+      el("div",{class:"avg",text:`우선도 점수 ${priVal.toLocaleString()}`})
     ]);
+
     const table=el("table",{class:"roster"});
     const thead=el("thead",{},[
       el("tr",{},[
@@ -209,7 +243,7 @@ function renderMatch(teams, avgs, diff){
     const tbody=el("tbody");
     const roles=[["TANK","탱커"],["DPS1","딜러 1"],["DPS2","딜러 2"],["SUP1","힐러 1"],["SUP2","힐러 2"]];
     for(const r of roles){
-      const [name, rank]=rowFor(r, parts);
+      const [name, rank]=rowFor(r[0], parts);
       tbody.appendChild(el("tr",{},[
         el("th",{text:r[1]}),
         el("td",{class:"name",text:name}),
@@ -217,22 +251,21 @@ function renderMatch(teams, avgs, diff){
       ]));
     }
     table.appendChild(thead); table.appendChild(tbody);
-    card.appendChild(head); card.appendChild(table);
+
+    const sumsLine = el("div",{class:"avg",text:`합계(T/D/S): ${sumObj.T} / ${sumObj.D} / ${sumObj.S}`});
+    card.appendChild(head); card.appendChild(table); card.appendChild(sumsLine);
     return card;
   }
 
-  const left=teamCard(teams[0],"Team 1",avgs[0]);
-  const vs=el("div",{class:"vs"},[
-    el("div",{class:"vs-badge",text:"VS"}),
-  ]);
-  const right=teamCard(teams[1],"Team 2",avgs[1]);
-  root.appendChild(left);
-  root.appendChild(vs);
-  root.appendChild(right);
+  const left = teamCard(teams[0], "Team 1", priVals[0], sums[0]);
+  const vs   = el("div",{class:"vs"},[ el("div",{class:"vs-badge",text:"VS"}) ]);
+  const right= teamCard(teams[1], "Team 2", priVals[1], sums[1]);
 
-  const diffLine=el("div",{class:"diff",text:`팀 평균 차이: ${diff.toFixed(1)}`});
+  root.appendChild(left); root.appendChild(vs); root.appendChild(right);
+  const diffLine=el("div",{class:"diff",text:`우선도 점수 차이: ${diff.toLocaleString()}`});
   root.appendChild(el("div",{style:"grid-column:1 / span 3; margin-top:8px;"},[diffLine]));
 }
+
 
 /* 실행 */
 function run(){
@@ -249,8 +282,9 @@ function run(){
     root.appendChild(el("div",{class:"diff",text:"유효한 팀 조합을 찾지 못했습니다."}));
     return;
   }
-  renderMatch(best.teams, best.avgs, best.diff);
+  renderMatch(best.teams, best.priVals, best.diff, best.sums);
 }
+
 
 /* 부트스트랩 */
 document.addEventListener("DOMContentLoaded",()=>{
