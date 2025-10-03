@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>OWKR 내전 매칭 시스템</title>
+  <title>OW2 내전 팀 매칭 · 티어 기반</title>
   <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
 <div class="container">
-  <div class="h1">OWKR 내전 팀 구성</div>
-  <div class="sub">티어를 기준으로 10명을 5:5 최적 분할합니다.</div>
+  <div class="h1">Overwatch 2 내전 팀 매칭</div>
+  <div class="sub">10명 전수 탐색 · 우선도: 탱 &gt; 딜 &gt; 힐 · 드래그앤드롭 편집</div>
 
   <div class="section-title">플레이어 추가(폼)</div>
   <div class="card grid grid-5">
@@ -22,11 +22,11 @@
 
   <div class="section-title">플레이어 추가(붙여넣기)</div>
   <div class="card">
-    <label>형식: <span class="kbd">닉네임#태그 /다5/플3/실2</span> 또는 <span class="kbd">닉#태그 / 탱 다5 / 딜 골2 / 힐 플4</span></label>
-    <textarea id="pasteBox" rows="4" placeholder="여러 줄 붙여넣기 가능&#10;예)&#10;DIANACOURTNY#3748 / 탱 다5 / 딜 골2 / 힐 플4&#10;Yechan#31311 탱 골2 / 딜 플3 / 힐 실1"></textarea>
+    <label>형식: <span class="kbd">닉#태그 /다5/플3/실2</span> 또는 <span class="kbd">닉#태그 / 탱 다5 / 딜 골2 / 힐 플4</span></label>
+    <textarea id="pasteBox" rows="4" placeholder="여러 줄 붙여넣기 가능&#10;예)&#10;PlayerOne#1111 /다5/다4/다4&#10;PlayerTwo#2222 / 탱 다5 / 딜 골2 / 힐 플4"></textarea>
     <div class="row" style="margin-top:10px">
       <button class="btn" id="parseAdd">파싱해서 추가</button>
-      <span class="kbd">라벨: 탱/tank/t, 딜/dps/d, 힐/sup/support/s · 티어 약어: 브/실/골/플/플레/다/마/그마/챔 + 1~5</span>
+      <span class="kbd">라벨: 탱/tank/t, 딜/dps/d, 힐/sup/s · 티어: 브/실/골/플/플레/다/마/그마/챔 + 1~5</span>
     </div>
   </div>
 
@@ -39,15 +39,18 @@
     <div class="muted" style="margin-top:8px">현재 인원: <span id="count">0</span> / 10</div>
   </div>
 
-  <div class="row" style="margin-top:14px">
+  <div class="row tools">
     <button class="btn primary" id="runBtn">팀짜기</button>
-    <span class="kbd">정확히 10명일 때만 실행됩니다</span>
+    <button class="btn" id="toggleEdit">편집 모드</button>
+    <button class="btn" id="rebalanceBtn">자동 균형 재계산</button>
+    <button class="btn" id="clearSelect">선택 해제</button>
   </div>
 
   <div class="section-title">대진 명단</div>
   <div id="match" class="match"></div>
-
 </div>
+
+<div id="toast" class="toast"></div>
 <script src="script.js"></script>
 </body>
 </html>
