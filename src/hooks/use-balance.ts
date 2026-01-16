@@ -1,77 +1,87 @@
-import { useState, useCallback } from 'react';
-import { Player, RoleAssignment, TeamResult, MatchResultData, Role, Rank } from '../types';
+import {useCallback, useState} from 'react';
+import {MatchResultData, Player, Rank, Role, TeamResult} from '../types';
 
-const ROLE_SLOTS: Role[] = ["TANK", "DPS", "DPS", "SUPPORT", "SUPPORT"];
-
-const getRoleData = (player: Player, role: Role): Rank => {
-    if (role === 'TANK') return player.tank;
-    if (role === 'DPS') return player.dps;
-    if (role === 'SUPPORT') return player.sup;
-    return { tier: 'UNRANKED', div: 0, score: 0, isPreferred: false };
-};
+const PREFERRED_BONUS = 100_000_000;
+const PREFERRED_PENALTY = 50_000_000;
 
 export const useBalance = () => {
     const [isBalancing, setIsBalancing] = useState(false);
     const [result, setResult] = useState<MatchResultData | null>(null);
 
-    const getBestRoleAssignment = useCallback((teamPlayers: Player[]) => {
-        const permute = (arr: Player[]): Player[][] => {
-            if (arr.length === 0) return [[]];
-            const first = arr[0];
-            const rest = arr.slice(1);
-            const permsWithoutFirst = permute(rest);
-            const allPermutations: Player[][] = [];
-            permsWithoutFirst.forEach((perm) => {
-                for (let i = 0; i <= perm.length; i++) {
-                    const withFirst = [...perm.slice(0, i), first, ...perm.slice(i)];
-                    allPermutations.push(withFirst);
-                }
-            });
-            return allPermutations;
-        };
+    const getPlayerRoleScore = (player: Player, role: Role): number => {
+        let rank: Rank | undefined;
+        if (role === 'TANK') rank = player.tank;
+        else if (role === 'DPS') rank = player.dps;
+        else if (role === 'SUPPORT') rank = player.sup;
 
-        let bestAssignment: RoleAssignment | null = null;
-        let maxAlgoScore = -Infinity;
+        if (!rank) return 0;
+
+        let score = rank.score;
+
+        if (rank.isPreferred) {
+            score += PREFERRED_BONUS;
+        }
+
+        const prefersOther =
+            (role !== 'TANK' && player.tank?.isPreferred) ||
+            (role !== 'DPS' && player.dps?.isPreferred) ||
+            (role !== 'SUPPORT' && player.sup?.isPreferred);
+
+        if (prefersOther) {
+            score -= PREFERRED_PENALTY;
+        }
+
+        return score;
+    };
+
+    const getBestTeamAssignment = useCallback((teamPlayers: Player[]) => {
+        let bestScore = -Infinity;
         let bestRealScore = 0;
+        let bestAssignment = { TANK: [] as Player[], DPS: [] as Player[], SUPPORT: [] as Player[] };
 
-        const permutations = permute(teamPlayers);
+        for (let t = 0; t < 5; t++) {
+            const remainders = [0, 1, 2, 3, 4].filter(idx => idx !== t);
 
-        for (const perm of permutations) {
-            let currentAlgoScore = 0;
-            let currentRealScore = 0;
+            for (let i = 0; i < remainders.length; i++) {
+                for (let j = i + 1; j < remainders.length; j++) {
+                    const d1 = remainders[i];
+                    const d2 = remainders[j];
 
-            const currentAssignment: RoleAssignment = { TANK: [], DPS: [], SUPPORT: [] };
+                    const healers = remainders.filter(idx => idx !== d1 && idx !== d2);
+                    const s1 = healers[0];
+                    const s2 = healers[1];
+                    const pTank = teamPlayers[t];
+                    const pDps1 = teamPlayers[d1];
+                    const pDps2 = teamPlayers[d2];
+                    const pSup1 = teamPlayers[s1];
+                    const pSup2 = teamPlayers[s2];
 
-            for (let i = 0; i < 5; i++) {
-                const role = ROLE_SLOTS[i];
-                const player = perm[i];
-                const { score, isPreferred } = getRoleData(player, role);
+                    const currentAlgoScore =
+                        getPlayerRoleScore(pTank, 'TANK') +
+                        getPlayerRoleScore(pDps1, 'DPS') +
+                        getPlayerRoleScore(pDps2, 'DPS') +
+                        getPlayerRoleScore(pSup1, 'SUPPORT') +
+                        getPlayerRoleScore(pSup2, 'SUPPORT');
 
-                currentRealScore += score;
-                currentAlgoScore += score;
+                    if (currentAlgoScore > bestScore) {
+                        bestScore = currentAlgoScore;
 
-                if (isPreferred) currentAlgoScore += 100000000;
-
-                const prefersOther =
-                    (role !== 'TANK' && player.tank?.isPreferred) ||
-                    (role !== 'DPS' && player.dps?.isPreferred) ||
-                    (role !== 'SUPPORT' && player.sup?.isPreferred);
-
-                if (prefersOther) currentAlgoScore -= 50000000;
-
-                currentAssignment[role].push(player);
-            }
-
-            if (currentAlgoScore > maxAlgoScore) {
-                maxAlgoScore = currentAlgoScore;
-                bestAssignment = currentAssignment;
-                bestRealScore = currentRealScore;
+                        bestRealScore = pTank.tank.score +
+                            pDps1.dps.score + pDps2.dps.score +
+                            pSup1.sup.score + pSup2.sup.score;
+                        bestAssignment = {
+                            TANK: [pTank],
+                            DPS: [pDps1, pDps2],
+                            SUPPORT: [pSup1, pSup2]
+                        };
+                    }
+                }
             }
         }
 
         return {
-            assignment: bestAssignment!,
-            algoScore: maxAlgoScore,
+            assignment: bestAssignment,
+            algoScore: bestScore,
             realScore: bestRealScore
         };
     }, []);
@@ -86,50 +96,64 @@ export const useBalance = () => {
 
         setTimeout(() => {
             try {
-                let finalTeamA: TeamResult | null = null;
-                let finalTeamB: TeamResult | null = null;
+
+                const n = 10;
+                const k = 5;
+                const teamCache = new Map<number, ReturnType<typeof getBestTeamAssignment>>();
+
                 let minDiff = Infinity;
                 let bestAlgoDiff = Infinity;
+                let finalTeamA: TeamResult | null = null;
+                let finalTeamB: TeamResult | null = null;
 
-                const combine = (src: Player[], len: number, start: number, picked: Player[]) => {
-                    if (len === 0) {
-                        const teamA = picked;
-                        const teamB = src.filter(p => !teamA.includes(p));
-
-                        const resA = getBestRoleAssignment(teamA);
-                        const resB = getBestRoleAssignment(teamB);
-
-                        if (resA.assignment && resB.assignment) {
-                            const algoDiff = Math.abs(resA.algoScore - resB.algoScore);
-                            const realDiff = Math.abs(resA.realScore - resB.realScore);
-
-                            if (algoDiff < bestAlgoDiff || (algoDiff === bestAlgoDiff && realDiff < minDiff)) {
-                                bestAlgoDiff = algoDiff;
-                                minDiff = realDiff;
-
-                                finalTeamA = { ...resA, name: "TEAM 1" };
-                                finalTeamB = { ...resB, name: "TEAM 2" };
-                            }
-                        }
+                const combinations: number[] = [];
+                const generateCombos = (start: number, count: number, mask: number) => {
+                    if (count === 0) {
+                        combinations.push(mask);
                         return;
                     }
-
-                    for (let i = start; i <= src.length - len; i++) {
-                        combine(src, len - 1, i + 1, [...picked, src[i]]);
+                    for (let i = start; i <= n - count; i++) {
+                        generateCombos(i + 1, count - 1, mask | (1 << i));
                     }
                 };
 
-                combine(players, 5, 0, []);
+                generateCombos(1, 4, 1);
+
+                for (const maskA of combinations) {
+                    const maskB = ((1 << n) - 1) ^ maskA;
+                    const teamAPlayers: Player[] = [];
+                    const teamBPlayers: Player[] = [];
+
+                    for (let i = 0; i < n; i++) {
+                        if ((maskA >> i) & 1) teamAPlayers.push(players[i]);
+                        else teamBPlayers.push(players[i]);
+                    }
+
+                    const resA = getBestTeamAssignment(teamAPlayers);
+                    const resB = getBestTeamAssignment(teamBPlayers);
+
+                    const algoDiff = Math.abs(resA.algoScore - resB.algoScore);
+                    const realDiff = Math.abs(resA.realScore - resB.realScore);
+
+                    if (algoDiff < bestAlgoDiff || (algoDiff === bestAlgoDiff && realDiff < minDiff)) {
+                        bestAlgoDiff = algoDiff;
+                        minDiff = realDiff;
+
+                        finalTeamA = { ...resA, name: "TEAM 1" };
+                        finalTeamB = { ...resB, name: "TEAM 2" };
+
+                        if (algoDiff === 0 && realDiff === 0) break;
+                    }
+                }
 
                 if (finalTeamA && finalTeamB) {
                     setResult({
-                        teamA: finalTeamA!,
-                        teamB: finalTeamB!,
+                        teamA: finalTeamA,
+                        teamB: finalTeamB,
                         diff: minDiff
                     });
-                } else {
-                    alert("유효한 팀 조합을 찾지 못했습니다.");
                 }
+
             } catch (error) {
                 console.error("Balancing Error:", error);
                 alert("계산 중 오류가 발생했습니다.");
@@ -137,7 +161,7 @@ export const useBalance = () => {
                 setIsBalancing(false);
             }
         }, 50);
-    }, [getBestRoleAssignment]);
+    }, [getBestTeamAssignment]);
 
     return { balanceTeams, result, setResult, isBalancing };
 };
