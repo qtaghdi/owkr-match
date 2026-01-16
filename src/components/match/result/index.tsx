@@ -22,7 +22,6 @@ const TeamCard = ({ title, teamData, teamIdx, color, onSlotClick, swapSource }:
     const borderColor = color === 'blue' ? 'border-blue-500/30' : 'border-red-500/30';
     const titleColor = color === 'blue' ? 'text-blue-400' : 'text-red-400';
 
-    // 역할군 아이콘 매핑
     const getRoleIcon = (role: Role) => {
         switch (role) {
             case 'TANK': return <TankIcon className="text-slate-400" size={18} />;
@@ -65,7 +64,6 @@ const TeamCard = ({ title, teamData, teamIdx, color, onSlotClick, swapSource }:
                         const isSelected = swapSource?.teamIdx === teamIdx && swapSource?.role === roleKey && swapSource?.index === arrayIndex;
                         const rankInfo = roleKey === 'TANK' ? player.tank : roleKey === 'DPS' ? player.dps : player.sup;
 
-                        // [수정] 이미지 경로 변수 할당
                         const tierImg = getTierImage(rankInfo.tier);
 
                         return (

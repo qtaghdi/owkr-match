@@ -18,10 +18,9 @@ const PlayerForm = ({ inputs, setInputs, addPlayer, pasteText, setPasteText, han
     const inputStyle = "w-full bg-slate-700 border border-slate-600 rounded p-2 text-sm text-white placeholder:text-slate-400 focus:border-blue-400 focus:ring-1 focus:ring-blue-400 outline-none transition-all";
     const selectStyle = "bg-slate-700 border border-slate-600 rounded p-2 text-sm text-white outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400";
 
-    // [수정] 반환 타입을 string | undefined로 명시하여 TS 에러 해결
     const getTierImage = (tier: string): string | undefined => {
         if (!tier) return undefined;
-        if (tier === 'UNRANKED') return '/tier/unrank.png'; // 미배치 아이콘 경로
+        if (tier === 'UNRANKED') return '/tier/unrank.png';
         return `/tier/${tier.toLowerCase()}.png`;
     };
 
@@ -43,7 +42,6 @@ const PlayerForm = ({ inputs, setInputs, addPlayer, pasteText, setPasteText, han
                     </div>
                     <div className="flex gap-2 items-center">
                         <div className="w-9 h-9 flex items-center justify-center bg-slate-800 rounded border border-slate-600 shrink-0 overflow-hidden p-1">
-                            {/* [수정] tierImg가 존재할 때만 렌더링하여 null/undefined 에러 방지 */}
                             {tierImg && (
                                 <img
                                     src={tierImg}
