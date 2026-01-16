@@ -1,5 +1,5 @@
-import {useCallback, useState} from 'react';
-import {MatchResultData, Player, Rank, Role, TeamResult} from '../types';
+import { useState, useCallback } from 'react';
+import { Player, TeamResult, MatchResultData, Role, Rank } from '../types';
 
 const PREFERRED_BONUS = 100_000_000;
 const PREFERRED_PENALTY = 50_000_000;
@@ -66,13 +66,16 @@ export const useBalance = () => {
                     if (currentAlgoScore > bestScore) {
                         bestScore = currentAlgoScore;
 
-                        bestRealScore = pTank.tank.score +
+                        const currentRealScore =
+                            pTank.tank.score +
                             pDps1.dps.score + pDps2.dps.score +
                             pSup1.sup.score + pSup2.sup.score;
+
+                        bestRealScore = currentRealScore;
                         bestAssignment = {
                             TANK: [pTank],
                             DPS: [pDps1, pDps2],
-                            SUPPORT: [pSup1, pSup2]
+                            SUPPORT: [pSup1, pSup2] 
                         };
                     }
                 }
