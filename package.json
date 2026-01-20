@@ -16,7 +16,7 @@
     "clsx": "^2.1.1",
     "cookie": "^1.1.1",
     "framer-motion": "^12.26.2",
-    "html2canvas": "^1.4.1",
+    "html-to-image": "^1.11.13",
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^0.562.0",
     "react": "^19.2.0",
@@ -26,7 +26,6 @@
   "devDependencies": {
     "@eslint/js": "^9.39.1",
     "@types/cookie": "^0.6.0",
-    "@types/html2canvas": "^0.5.35",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^25.0.9",
     "@types/react": "^19.2.8",

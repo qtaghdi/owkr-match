@@ -16,8 +16,8 @@ const MatchResult = ({ matchResult, onSlotClick, swapSource }: MatchResultProps)
 
     return (
         <div className="space-y-4">
-            <div ref={captureRef} className="bg-[#0b0c10] p-4 rounded-xl">
-                <div className="grid md:grid-cols-2 gap-6 relative">
+            <div ref={captureRef} className="bg-[#0b0c10] p-4 rounded-xl overflow-visible">
+                <div className="flex flex-col md:flex-row gap-6 relative overflow-visible">
                     <TeamCard
                         title="TEAM 1"
                         teamData={matchResult.teamA}

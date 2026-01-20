@@ -1,9 +1,10 @@
 import { useState, useCallback, RefObject } from 'react';
+import { toPng } from 'html-to-image';
 
 type CopyStatus = 'idle' | 'loading' | 'success' | 'error';
 
 /**
- * @description html2canvas를 이용해 요소를 이미지로 캡처하고 클립보드에 복사하는 훅.
+ * @description html-to-image를 이용해 요소를 이미지로 캡처하고 클립보드에 복사하는 훅.
  * @param ref - 캡처할 요소의 ref
  * @returns copyStatus, handleCopyImage
  */
@@ -15,32 +16,24 @@ export const useCopyImage = (ref: RefObject<HTMLDivElement | null>) => {
         setCopyStatus('loading');
 
         try {
-            const html2canvas = (await import('html2canvas')).default;
-
-            const canvas = await html2canvas(ref.current, {
+            const dataUrl = await toPng(ref.current, {
                 backgroundColor: '#0b0c10',
-                useCORS: true,
-                logging: false,
+                pixelRatio: 2,
+                cacheBust: true,
             });
 
-            canvas.toBlob(async (blob) => {
-                if (!blob) {
-                    setCopyStatus('error');
-                    return;
-                }
-                try {
-                    const item = new ClipboardItem({ 'image/png': blob });
-                    await navigator.clipboard.write([item]);
-                    setCopyStatus('success');
-                    setTimeout(() => setCopyStatus('idle'), 2000);
-                } catch (err) {
-                    console.error(err);
-                    setCopyStatus('error');
-                }
-            });
+            const response = await fetch(dataUrl);
+            const blob = await response.blob();
+
+            const item = new ClipboardItem({ 'image/png': blob });
+            await navigator.clipboard.write([item]);
+
+            setCopyStatus('success');
+            setTimeout(() => setCopyStatus('idle'), 2000);
         } catch (error) {
             console.error(error);
             setCopyStatus('error');
+            setTimeout(() => setCopyStatus('idle'), 2000);
         }
     }, [ref]);
 

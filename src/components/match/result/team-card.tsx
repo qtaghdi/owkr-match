@@ -42,13 +42,13 @@ const TeamCard = ({ title, teamData, teamIdx, color, onSlotClick, swapSource }: 
     const roles: Role[] = ['TANK', 'DPS', 'DPS', 'SUPPORT', 'SUPPORT'];
 
     return (
-        <div className={`bg-surface-elevated border ${borderColor} rounded-xl overflow-hidden shadow-xl`}>
-            <div className="p-4 bg-slate-800/40 border-b border-slate-800 flex justify-between items-center">
+        <div className={`bg-surface-elevated border ${borderColor} rounded-xl shadow-xl flex-1 min-w-0`}>
+            <div className="p-4 bg-slate-800/40 border-b border-slate-800 flex justify-between items-center rounded-t-xl">
                 <h3 className={`font-bold text-lg ${titleColor}`}>{title}</h3>
                 <span className="text-slate-500 font-bold">{teamData.realScore.toLocaleString()}</span>
             </div>
-            <div className="p-2">
-                <table className="w-full text-sm border-collapse">
+            <div className="p-2 overflow-visible">
+                <table className="w-full text-sm border-collapse overflow-visible">
                     <thead>
                     <tr className="text-slate-500 text-xs text-left">
                         <th className="p-2 font-medium w-12 text-center">Role</th>
