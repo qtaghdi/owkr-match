@@ -11,6 +11,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@vercel/analytics": "^1.6.1",
     "@vercel/node": "^5.5.22",
     "clsx": "^2.1.1",
     "cookie": "^1.1.1",
