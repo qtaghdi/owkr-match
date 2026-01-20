@@ -150,8 +150,8 @@ const App = () => {
                             {user.username}
                         </div>
                         <button
-                            onClick={() => {
-                                document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+                            onClick={async () => {
+                                await fetch('/api/auth/logout', { method: 'POST' });
                                 window.location.reload();
                             }}
                             className="btn-ghost text-xs flex items-center gap-1.5"

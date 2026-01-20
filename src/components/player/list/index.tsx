@@ -1,9 +1,10 @@
 import React from 'react';
 import { Trash2, Users, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Player } from 'src/types';
+import { Player } from '../../../types';
 import { DamageIcon, SupportIcon, TankIcon } from '../../roles/icon';
-import { formatRank } from "src/constants";
+import { formatRank } from '../../../constants';
+import RankBadge from './rank-badge';
 
 interface PlayerListProps {
     players: Player[];
@@ -119,22 +120,5 @@ const PlayerList = ({ players = [], setPlayers }: PlayerListProps) => {
         </div>
     );
 };
-
-interface RankBadgeProps {
-    icon: React.ReactNode;
-    rank: Player['tank'];
-    label: string;
-}
-
-const RankBadge = ({ icon, rank, label }: RankBadgeProps) => (
-    <span className={`flex items-center gap-1 text-[11px] ${
-        rank.isPreferred
-            ? "text-amber-400 font-semibold"
-            : "text-slate-500"
-    }`}>
-        {icon}
-        {label}
-    </span>
-);
 
 export default PlayerList;

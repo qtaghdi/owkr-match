@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { Star } from 'lucide-react';
 import { formatRank } from '../../../constants';
 import { TeamResult, Role, Player } from '../../../types';
-import { DamageIcon, SupportIcon, TankIcon } from "../../roles/icon";
+import { DamageIcon, SupportIcon, TankIcon } from '../../roles/icon';
+import { getTierImage } from '../../../utils/tier';
+import PlayerTooltip from './player-tooltip';
 
 export interface SwapSource {
     teamIdx: number;
@@ -19,78 +21,23 @@ interface TeamCardProps {
     swapSource: SwapSource | null;
 }
 
-interface PlayerTooltipProps {
-    player: Player;
-    visible: boolean;
-}
-
-const PlayerTooltip = ({ player, visible }: PlayerTooltipProps) => {
-    if (!visible) return null;
-
-    return (
-        <div className="absolute left-0 top-full mt-2 z-50 bg-surface-elevated border border-slate-700 rounded-lg p-3 shadow-xl min-w-[180px] animate-fade-in">
-            <div className="text-xs font-semibold text-slate-200 mb-2 pb-2 border-b border-slate-700">
-                {player.name}
-            </div>
-            <div className="space-y-1.5">
-                <TooltipRow
-                    icon={<TankIcon size={14} />}
-                    label="탱커"
-                    rank={player.tank}
-                />
-                <TooltipRow
-                    icon={<DamageIcon size={14} />}
-                    label="딜러"
-                    rank={player.dps}
-                />
-                <TooltipRow
-                    icon={<SupportIcon size={14} />}
-                    label="힐러"
-                    rank={player.sup}
-                />
-            </div>
-        </div>
-    );
+const getRoleIcon = (role: Role) => {
+    switch (role) {
+        case 'TANK': return <TankIcon className="text-slate-400" size={18} />;
+        case 'DPS': return <DamageIcon className="text-slate-400" size={18} />;
+        case 'SUPPORT': return <SupportIcon className="text-slate-400" size={18} />;
+    }
 };
 
-interface TooltipRowProps {
-    icon: React.ReactNode;
-    label: string;
-    rank: Player['tank'];
-}
-
-const TooltipRow = ({ icon, label, rank }: TooltipRowProps) => (
-    <div className={`flex items-center justify-between text-xs ${rank.isPreferred ? 'text-amber-400' : 'text-slate-400'}`}>
-        <div className="flex items-center gap-1.5">
-            {icon}
-            <span>{label}</span>
-            {rank.isPreferred && <Star size={10} className="fill-amber-400" />}
-        </div>
-        <span className={`font-mono ${rank.isPreferred ? 'font-semibold' : ''}`}>
-            {formatRank(rank).replace('★', '')}
-        </span>
-    </div>
-);
+const getRankInfo = (player: Player, role: Role) => {
+    return role === 'TANK' ? player.tank : role === 'DPS' ? player.dps : player.sup;
+};
 
 const TeamCard = ({ title, teamData, teamIdx, color, onSlotClick, swapSource }: TeamCardProps) => {
     const [hoveredPlayer, setHoveredPlayer] = useState<string | null>(null);
 
     const borderColor = color === 'blue' ? 'border-blue-500/30' : 'border-red-500/30';
     const titleColor = color === 'blue' ? 'text-blue-400' : 'text-red-400';
-
-    const getRoleIcon = (role: Role) => {
-        switch (role) {
-            case 'TANK': return <TankIcon className="text-slate-400" size={18} />;
-            case 'DPS': return <DamageIcon className="text-slate-400" size={18} />;
-            case 'SUPPORT': return <SupportIcon className="text-slate-400" size={18} />;
-        }
-    };
-
-    const getTierImage = (tier: string): string | undefined => {
-        if (!tier) return undefined;
-        if (tier === 'UNRANKED') return '/tier/unrank.png';
-        return `/tier/${tier.toLowerCase()}.png`;
-    };
 
     const roles: Role[] = ['TANK', 'DPS', 'DPS', 'SUPPORT', 'SUPPORT'];
 
@@ -120,7 +67,7 @@ const TeamCard = ({ title, teamData, teamIdx, color, onSlotClick, swapSource }: 
 
                         const playerId = `${teamIdx}-${roleKey}-${arrayIndex}`;
                         const isSelected = swapSource?.teamIdx === teamIdx && swapSource?.role === roleKey && swapSource?.index === arrayIndex;
-                        const rankInfo = roleKey === 'TANK' ? player.tank : roleKey === 'DPS' ? player.dps : player.sup;
+                        const rankInfo = getRankInfo(player, roleKey);
                         const tierImg = getTierImage(rankInfo.tier);
                         const isHovered = hoveredPlayer === playerId;
 
@@ -146,7 +93,7 @@ const TeamCard = ({ title, teamData, teamIdx, color, onSlotClick, swapSource }: 
                                         {player.name}
                                         {rankInfo.isPreferred && <Star size={12} className="text-yellow-400 fill-yellow-400"/>}
                                     </div>
-                                    <PlayerTooltip player={player} visible={isHovered} />
+                                    <PlayerTooltip player={player} visible={isHovered} showAbove={idx >= 3} />
                                 </td>
 
                                 <td className="py-2 px-3 align-middle text-right font-mono text-slate-300">

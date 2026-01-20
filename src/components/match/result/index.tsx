@@ -1,8 +1,8 @@
-import React, { useRef, useState } from 'react';
-import { Camera, Check, AlertCircle } from 'lucide-react';
-
-import { MatchResultData, Role } from 'src/types';
+import React, { useRef } from 'react';
+import { MatchResultData, Role } from '../../../types';
+import { useCopyImage } from '../../../hooks/use-copy-image';
 import TeamCard, { SwapSource } from './team-card';
+import CopyButton from './copy-button';
 
 interface MatchResultProps {
     matchResult: MatchResultData;
@@ -12,41 +12,7 @@ interface MatchResultProps {
 
 const MatchResult = ({ matchResult, onSlotClick, swapSource }: MatchResultProps) => {
     const captureRef = useRef<HTMLDivElement>(null);
-    const [copyStatus, setCopyStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-
-    const handleCopyImage = async () => {
-        if (!captureRef.current) return;
-        setCopyStatus('loading');
-
-        try {
-            const html2canvas = (await import('html2canvas')).default;
-
-            const canvas = await html2canvas(captureRef.current, {
-                background: '#0b0c10',
-                useCORS: true,
-                logging: false,
-            });
-
-            canvas.toBlob(async (blob) => {
-                if (!blob) {
-                    setCopyStatus('error');
-                    return;
-                }
-                try {
-                    const item = new ClipboardItem({ 'image/png': blob });
-                    await navigator.clipboard.write([item]);
-                    setCopyStatus('success');
-                    setTimeout(() => setCopyStatus('idle'), 2000);
-                } catch (err) {
-                    console.error(err);
-                    setCopyStatus('error');
-                }
-            });
-        } catch (error) {
-            console.error(error);
-            setCopyStatus('error');
-        }
-    };
+    const { copyStatus, handleCopyImage } = useCopyImage(captureRef);
 
     return (
         <div className="space-y-4">
@@ -82,27 +48,7 @@ const MatchResult = ({ matchResult, onSlotClick, swapSource }: MatchResultProps)
 
             <div className="flex items-center justify-between text-xs text-slate-500 px-1 mt-4">
                 <div>* 플레이어를 클릭하여 스왑</div>
-                <button
-                    onClick={handleCopyImage}
-                    disabled={copyStatus === 'loading'}
-                    className={`
-                        flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition-all text-xs
-                        ${copyStatus === 'success'
-                        ? 'bg-green-500/20 text-green-400 border border-green-500/50'
-                        : copyStatus === 'error'
-                            ? 'bg-red-500/20 text-red-400 border border-red-500/50'
-                            : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-600'}
-                    `}
-                >
-                    {copyStatus === 'loading' && <span className="animate-spin">⏳</span>}
-                    {copyStatus === 'success' && <Check size={14} />}
-                    {copyStatus === 'error' && <AlertCircle size={14} />}
-                    {copyStatus === 'idle' && <Camera size={14} />}
-
-                    {copyStatus === 'loading' ? '캡처 중...' :
-                        copyStatus === 'success' ? '복사 완료!' :
-                            copyStatus === 'error' ? '실패' : '이미지로 복사'}
-                </button>
+                <CopyButton status={copyStatus} onClick={handleCopyImage} />
             </div>
         </div>
     );
