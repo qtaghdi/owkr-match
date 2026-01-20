@@ -2,6 +2,146 @@
 @tailwind components;
 @tailwind utilities;
 
-.custom-scrollbar::-webkit-scrollbar { width: 6px; }
-.custom-scrollbar::-webkit-scrollbar-track { background: #1e293b; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+/* Pretendard Font */
+@font-face {
+    font-family: 'Pretendard';
+    src: url('/fonts/Pretendard-Thin.woff2') format('woff2');
+    font-weight: 100;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Pretendard';
+    src: url('/fonts/Pretendard-ExtraLight.woff2') format('woff2');
+    font-weight: 200;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Pretendard';
+    src: url('/fonts/Pretendard-Light.woff2') format('woff2');
+    font-weight: 300;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Pretendard';
+    src: url('/fonts/Pretendard-Regular.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Pretendard';
+    src: url('/fonts/Pretendard-Medium.woff2') format('woff2');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Pretendard';
+    src: url('/fonts/Pretendard-SemiBold.woff2') format('woff2');
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Pretendard';
+    src: url('/fonts/Pretendard-Bold.woff2') format('woff2');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Pretendard';
+    src: url('/fonts/Pretendard-ExtraBold.woff2') format('woff2');
+    font-weight: 800;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Pretendard';
+    src: url('/fonts/Pretendard-Black.woff2') format('woff2');
+    font-weight: 900;
+    font-style: normal;
+    font-display: swap;
+}
+
+/* Base Styles */
+@layer base {
+    body {
+        @apply bg-surface text-slate-200 antialiased;
+        font-feature-settings: 'ss01' on, 'ss02' on;
+    }
+
+    ::selection {
+        @apply bg-accent/30 text-white;
+    }
+}
+
+/* Component Styles */
+@layer components {
+    .btn-primary {
+        @apply px-5 py-2.5 bg-accent hover:bg-accent-hover text-white font-semibold rounded-lg
+               transition-all duration-200 active:scale-[0.98]
+               shadow-lg shadow-accent/20 hover:shadow-accent/30;
+    }
+
+    .btn-danger {
+        @apply px-4 py-2 bg-danger/10 hover:bg-danger/20 text-danger hover:text-danger-hover
+               font-medium rounded-lg border border-danger/20 hover:border-danger/40
+               transition-all duration-200;
+    }
+
+    .btn-ghost {
+        @apply px-4 py-2 bg-transparent hover:bg-white/5 text-slate-400 hover:text-slate-200
+               font-medium rounded-lg transition-all duration-200;
+    }
+
+    .card {
+        @apply bg-surface-elevated border border-slate-800/50 rounded-2xl p-5
+               shadow-xl shadow-black/20;
+    }
+
+    .input-base {
+        @apply w-full bg-surface border border-slate-700/50 rounded-lg px-4 py-3
+               text-sm text-white placeholder:text-slate-500
+               focus:border-accent/50 focus:ring-2 focus:ring-accent/20
+               outline-none transition-all duration-200;
+    }
+}
+
+/* Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+}
+
+/* Tab Styles */
+.tab-active {
+    @apply text-white border-b-2 border-accent;
+}
+
+.tab-inactive {
+    @apply text-slate-500 hover:text-slate-300 border-b-2 border-transparent;
+}

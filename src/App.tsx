@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Shuffle, RefreshCcw, Loader2 } from 'lucide-react';
+import { Shuffle, RefreshCcw, Loader2, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TIERS, getScore } from './constants';
 import { parseLineToPlayer } from './utils/parser';
+import { setWithExpiry, getWithExpiry, removeItem, cleanupExpired } from './utils/storage';
 import { useBalance } from './hooks/use-balance';
 import { useAuth } from './hooks/use-auth';
 import { Player, Role, MatchResultData } from './types';
@@ -12,39 +13,50 @@ import MatchResult from './components/match/result';
 import LoginScreen from './components/auth/login-screen';
 import LoadingScreen from './components/common/loading-screen';
 
+const STORAGE_KEYS = {
+    PLAYERS: 'owkr_players',
+    RESULT: 'owkr_result'
+};
+
 const App = () => {
     const { user, isLoading } = useAuth();
 
     const [players, setPlayers] = useState<Player[]>(() => {
-        const saved = localStorage.getItem('owkr_players');
-        return saved ? JSON.parse(saved) : [];
+        return getWithExpiry<Player[]>(STORAGE_KEYS.PLAYERS) || [];
     });
 
     const { balanceTeams, result, setResult, isBalancing } = useBalance();
 
     const isMounted = useRef(false);
+
     useEffect(() => {
-        const savedResult = localStorage.getItem('owkr_result');
+        // 앱 시작 시 만료된 데이터 정리
+        cleanupExpired();
+
+        const savedResult = getWithExpiry<MatchResultData>(STORAGE_KEYS.RESULT);
         if (savedResult) {
-            setResult(JSON.parse(savedResult));
+            setResult(savedResult);
         }
         isMounted.current = true;
     }, [setResult]);
 
     useEffect(() => {
-        localStorage.setItem('owkr_players', JSON.stringify(players));
+        if (players.length > 0) {
+            setWithExpiry(STORAGE_KEYS.PLAYERS, players);
+        } else {
+            removeItem(STORAGE_KEYS.PLAYERS);
+        }
     }, [players]);
 
     useEffect(() => {
         if (!isMounted.current) return;
 
         if (result) {
-            localStorage.setItem('owkr_result', JSON.stringify(result));
+            setWithExpiry(STORAGE_KEYS.RESULT, result);
         } else {
-            localStorage.removeItem('owkr_result');
+            removeItem(STORAGE_KEYS.RESULT);
         }
     }, [result]);
-
 
     const [inputs, setInputs] = useState({
         name: '',
@@ -53,7 +65,7 @@ const App = () => {
         sTier: 'PLATINUM', sDiv: '3', sPref: false
     });
     const [pasteText, setPasteText] = useState('');
-    const [swapSource, setSwapSource] = useState<{teamIdx: number, role: Role, index: number} | null>(null);
+    const [swapSource, setSwapSource] = useState<{ teamIdx: number, role: Role, index: number } | null>(null);
 
     const addPlayer = () => {
         if (!inputs.name.trim()) return;
@@ -90,7 +102,8 @@ const App = () => {
         if (!result) return;
         if (swapSource) {
             if (swapSource.teamIdx === teamIdx && swapSource.role === role && swapSource.index === idx) {
-                setSwapSource(null); return;
+                setSwapSource(null);
+                return;
             }
             const newResult = JSON.parse(JSON.stringify(result)) as MatchResultData;
             const teamNames: ('teamA' | 'teamB')[] = ['teamA', 'teamB'];
@@ -113,72 +126,133 @@ const App = () => {
     if (isLoading) return <LoadingScreen />;
     if (!user) return <LoginScreen />;
 
+    const isReady = players.length === 10;
+
     return (
-        <div className="min-h-screen bg-[#0b0c10] text-[#e6e9ef] font-sans p-4 md:p-8">
-            <div className="max-w-7xl mx-auto space-y-8 relative">
-                <div className="absolute top-0 right-0 flex items-center gap-2 text-xs text-slate-500 bg-slate-900/50 px-3 py-1.5 rounded-full border border-slate-800">
-                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                    관리자: {user.username}
-                </div>
-
-                <header className="text-center space-y-2 pt-6 md:pt-0">
-                    <motion.h1 initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-3xl md:text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">
-                        OWKR Match V2
+        <div className="min-h-screen bg-surface text-slate-200 font-sans">
+            {/* Header */}
+            <header className="sticky top-0 z-50 bg-surface/80 backdrop-blur-xl border-b border-slate-800/50">
+                <div className="max-w-7xl mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
+                    <motion.h1
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className="text-xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300"
+                    >
+                        OWKR Match
                     </motion.h1>
-                    <p className="text-slate-400 text-sm">티어 뒤에 '!'를 붙이면 포지션 고정</p>
-                </header>
 
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2 text-sm text-slate-400">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                            {user.username}
+                        </div>
+                        <button
+                            onClick={() => {
+                                document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+                                window.location.reload();
+                            }}
+                            className="btn-ghost text-xs flex items-center gap-1.5"
+                        >
+                            <LogOut size={14} />
+                            로그아웃
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            {/* Main Content */}
+            <main className="max-w-7xl mx-auto px-4 md:px-8 py-6 md:py-8">
                 <div className="grid lg:grid-cols-12 gap-6">
+                    {/* Left Panel - Player Input */}
                     <div className="lg:col-span-4 space-y-6">
                         <PlayerForm
-                            inputs={inputs} setInputs={setInputs} addPlayer={addPlayer}
-                            pasteText={pasteText} setPasteText={setPasteText} handlePaste={handlePaste}
+                            inputs={inputs}
+                            setInputs={setInputs}
+                            addPlayer={addPlayer}
+                            pasteText={pasteText}
+                            setPasteText={setPasteText}
+                            handlePaste={handlePaste}
                         />
                         <PlayerList players={players} setPlayers={setPlayers} />
                     </div>
 
+                    {/* Right Panel - Match Result */}
                     <div className="lg:col-span-8">
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-xl font-bold flex items-center gap-2">매칭 결과</h2>
+                        {/* Action Bar */}
+                        <div className="flex items-center justify-between mb-5">
+                            <h2 className="text-lg font-semibold text-white">매칭 결과</h2>
                             <div className="flex gap-2">
-                                <button onClick={() => setResult(null)} className="px-4 py-2 text-sm bg-slate-800 hover:bg-slate-700 rounded text-slate-300 flex items-center gap-2">
-                                    <RefreshCcw size={16}/> 초기화
-                                </button>
+                                {result && (
+                                    <button
+                                        onClick={() => setResult(null)}
+                                        className="btn-ghost text-sm flex items-center gap-2"
+                                    >
+                                        <RefreshCcw size={14} />
+                                        초기화
+                                    </button>
+                                )}
                                 <button
                                     onClick={handleRunMatching}
-                                    disabled={isBalancing}
-                                    className="px-6 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold rounded shadow-lg shadow-blue-900/50 flex items-center gap-2 transform active:scale-95 transition-transform disabled:opacity-50"
+                                    disabled={isBalancing || !isReady}
+                                    className="btn-primary flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
                                 >
-                                    {isBalancing ? <Loader2 size={18} className="animate-spin"/> : <Shuffle size={18}/>}
+                                    {isBalancing ? (
+                                        <Loader2 size={16} className="animate-spin" />
+                                    ) : (
+                                        <Shuffle size={16} />
+                                    )}
                                     팀 짜기
                                 </button>
                             </div>
                         </div>
 
+                        {/* Result Area */}
                         <AnimatePresence mode="wait">
                             {!result ? (
-                                <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-[500px] border-2 border-dashed border-slate-800 rounded-2xl flex flex-col items-center justify-center text-slate-600">
+                                <motion.div
+                                    key="empty"
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    className="h-[500px] border-2 border-dashed border-slate-800 rounded-2xl flex flex-col items-center justify-center"
+                                >
                                     {isBalancing ? (
-                                        <div className="flex flex-col items-center">
-                                            <Loader2 size={48} className="text-blue-500 animate-spin mb-4"/>
-                                            <p className="animate-pulse">최적의 조합을 계산 중입니다...</p>
+                                        <div className="flex flex-col items-center gap-4">
+                                            <Loader2 size={40} className="text-accent animate-spin" />
+                                            <p className="text-slate-500 animate-pulse">최적의 조합을 계산 중...</p>
                                         </div>
                                     ) : (
-                                        <>
-                                            <Shuffle size={48} className="mb-4 opacity-20"/>
-                                            <p>플레이어 10명을 채우고 '팀 짜기'를 눌러주세요.</p>
-                                        </>
+                                        <div className="flex flex-col items-center gap-3">
+                                            <div className="w-16 h-16 rounded-full bg-slate-800/50 flex items-center justify-center">
+                                                <Shuffle size={24} className="text-slate-600" />
+                                            </div>
+                                            <p className="text-slate-500">
+                                                {isReady
+                                                    ? "'팀 짜기' 버튼을 눌러주세요"
+                                                    : `플레이어 ${10 - players.length}명 더 필요`
+                                                }
+                                            </p>
+                                        </div>
                                     )}
                                 </motion.div>
                             ) : (
-                                <motion.div key="result" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.3 }}>
-                                    <MatchResult matchResult={result} onSlotClick={handleSlotClick} swapSource={swapSource} />
+                                <motion.div
+                                    key="result"
+                                    initial={{ opacity: 0, scale: 0.98 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{ duration: 0.3 }}
+                                >
+                                    <MatchResult
+                                        matchResult={result}
+                                        onSlotClick={handleSlotClick}
+                                        swapSource={swapSource}
+                                    />
                                 </motion.div>
                             )}
                         </AnimatePresence>
                     </div>
                 </div>
-            </div>
+            </main>
         </div>
     );
 };
