@@ -80,6 +80,8 @@ PlayerName#1234 다3! 플2 골1         # ! = preferred
 - **Naming:** PascalCase components, camelCase functions, UPPER_SNAKE constants
 - **Styling:** Tailwind dark theme (`#0b0c10` bg), blue/cyan gradients for CTAs
 - **TypeScript:** Strict mode, explicit types, interfaces for data models
+- **JSDoc:** Flow-focused, concise, and every JSDoc block must include an `@description` tag; avoid exhaustive narration
+- **CSS:** Keep style files free of comments
 
 ## Important Files
 

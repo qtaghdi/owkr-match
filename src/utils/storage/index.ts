@@ -1,5 +1,5 @@
 /**
- * 만료 기능이 있는 localStorage 유틸리티
+ * @description 만료 시간을 포함해 localStorage를 읽고 쓰는 유틸리티.
  */
 
 interface StorageItem<T> {
@@ -10,8 +10,7 @@ interface StorageItem<T> {
 const DEFAULT_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24시간
 
 /**
- * 만료 시간과 함께 데이터를 localStorage에 저장
- *
+ * @description 데이터와 만료 시점을 함께 저장한다.
  * @param key - 저장 키
  * @param data - 저장할 데이터
  * @param expiryMs - 만료 시간 (밀리초, 기본값: 24시간)
@@ -25,8 +24,7 @@ export const setWithExpiry = <T>(key: string, data: T, expiryMs: number = DEFAUL
 };
 
 /**
- * localStorage에서 데이터를 가져옴 (만료 확인)
- *
+ * @description 만료 여부를 확인하면서 저장된 데이터를 읽는다.
  * @param key - 저장 키
  * @returns 데이터 또는 만료/없음 시 null
  */
@@ -52,8 +50,7 @@ export const getWithExpiry = <T>(key: string): T | null => {
 };
 
 /**
- * localStorage에서 항목 삭제
- *
+ * @description 지정 키의 항목을 삭제한다.
  * @param key - 삭제할 키
  */
 export const removeItem = (key: string): void => {
@@ -61,7 +58,7 @@ export const removeItem = (key: string): void => {
 };
 
 /**
- * 만료된 모든 항목 정리
+ * @description 알려진 키들을 순회하며 만료된 항목을 제거한다.
  */
 export const cleanupExpired = (): void => {
     const keysToCheck = ['owkr_players', 'owkr_result'];

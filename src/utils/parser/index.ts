@@ -2,7 +2,7 @@ import { Player, Rank } from "src/types";
 import { TIERS, TIER_LABEL_MAP, getScore } from "src/constants";
 
 /**
- * 티어 문자열을 정규화하여 TIERS 배열의 인덱스를 반환
+ * @description 티어 문자열을 정규화해 TIERS 인덱스로 매핑한다.
  * @param tierStr - 티어 문자열 (예: "다이아", "다", "플레", "그마", "마스터" 등)
  * @returns 티어 인덱스 (0-7), 찾지 못하면 -1
  */
@@ -43,7 +43,7 @@ const findTierIndex = (tierStr: string): number => {
 };
 
 /**
- * 역할 문자열을 정규화하여 역할 타입 반환
+ * @description 역할 문자열을 표준 역할 타입으로 정규화한다.
  * @param roleStr - 역할 문자열 (예: "탱커", "탱", "딜러", "힐러" 등)
  * @returns 'TANK' | 'DPS' | 'SUPPORT' | null
  */
@@ -62,7 +62,7 @@ const parseRole = (roleStr: string): 'TANK' | 'DPS' | 'SUPPORT' | null => {
 };
 
 /**
- * 괄호 안의 예상 티어를 추출 (예: "미배치(골)" → "골", "실1(배치중)" → null)
+ * @description 괄호 안 티어 표기를 추출해 예상 티어로 해석한다.
  * @param text - 괄호를 포함한 텍스트
  * @returns 예상 티어 문자열 또는 null
  */
@@ -78,7 +78,7 @@ const extractEstimatedTier = (text: string): string | null => {
 };
 
 /**
- * 단일 역할 데이터를 파싱 (예: "다이아3!", "미배치(골)", "플5(예상)")
+ * @description 단일 역할 세그먼트를 파싱해 티어/등급/선호 여부를 만든다.
  * @param segment - 파싱할 세그먼트 문자열
  * @returns { tierIdx, div, isPreferred } 또는 null
  */
@@ -115,7 +115,7 @@ const parseRankSegment = (segment: string): { tierIdx: number; div: number; isPr
 };
 
 /**
- * Rank 객체 생성
+ * @description 티어/등급/선호를 받아 Rank 객체로 변환한다.
  * @param tierIdx - 티어 인덱스 (0-7)
  * @param div - 등급 (1-5)
  * @param isPreferred - 선호 역할 여부
@@ -134,7 +134,7 @@ const createRank = (tierIdx: number, div: number, isPreferred: boolean): Rank =>
 };
 
 /**
- * 기본 미배치 Rank 객체 생성
+ * @description 미배치 상태의 기본 Rank 객체를 만든다.
  * @returns 미배치 상태의 Rank 객체
  */
 const createUnrankedRank = (): Rank => ({
@@ -145,16 +145,7 @@ const createUnrankedRank = (): Rank => ({
 });
 
 /**
- * 한 줄의 텍스트를 Player 객체로 파싱
- *
- * 지원하는 형식:
- * - "PlayerName#1234 다5/다1/다5" (슬래시 구분)
- * - "PlayerName#1234 탱커 다이아3 딜러 플레4 힐러 마스터5" (역할 명시)
- * - "PlayerName#1234 다3! 플2 골1" (! = 선호 역할)
- * - "PlayerName#1234 미배치(골)/미배치(플)/플2" (예상 티어)
- * - "PlayerName#1234 탱! 실3/ 딜 브1/ 힐(예상)실2" (복합 형식)
- * - "PlayerName#1234 플 5/ 실 1(배치 중)/ 힐 골 3!" (공백 포함)
- *
+ * @description 한 줄 입력을 정규화→역할/티어 파싱→Player 생성 흐름으로 처리한다.
  * @param line - 파싱할 한 줄의 텍스트
  * @returns Player 객체 또는 파싱 실패 시 null
  */
@@ -285,12 +276,7 @@ export const parseLineToPlayer = (line: string): Player | null => {
 };
 
 /**
- * Discord 채팅 로그에서 플레이어 데이터만 추출
- *
- * 디스코드 형식 예시:
- * "닉네임역할 아이콘, 다이아 — 어제 오후 11:31
- * kimjungun#11853 다5/다1/다5"
- *
+ * @description 채팅 로그에서 유효한 라인만 골라 Player 배열을 만든다.
  * @param text - 전체 채팅 로그 텍스트
  * @returns Player 객체 배열
  */

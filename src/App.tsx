@@ -6,7 +6,7 @@ import { parseLineToPlayer } from './utils/parser';
 import { setWithExpiry, getWithExpiry, removeItem, cleanupExpired } from './utils/storage';
 import { useBalance } from './hooks/use-balance';
 import { useAuth } from './hooks/use-auth';
-import { Player, Role, MatchResultData } from './types';
+import { Player, Role, MatchResultData, Tier } from './types';
 import PlayerForm from './components/player/form';
 import PlayerList from './components/player/list';
 import MatchResult from './components/match/result';
@@ -69,12 +69,15 @@ const App = () => {
 
     const addPlayer = () => {
         if (!inputs.name.trim()) return;
+        const tTier = inputs.tTier as Tier;
+        const dTier = inputs.dTier as Tier;
+        const sTier = inputs.sTier as Tier;
         const newPlayer: Player = {
             id: Date.now(),
             name: inputs.name,
-            tank: { tier: inputs.tTier, div: inputs.tDiv, score: getScore(TIERS.indexOf(inputs.tTier), inputs.tDiv), isPreferred: inputs.tPref },
-            dps: { tier: inputs.dTier, div: inputs.dDiv, score: getScore(TIERS.indexOf(inputs.dTier), inputs.dDiv), isPreferred: inputs.dPref },
-            sup: { tier: inputs.sTier, div: inputs.sDiv, score: getScore(TIERS.indexOf(inputs.sTier), inputs.sDiv), isPreferred: inputs.sPref },
+            tank: { tier: tTier, div: inputs.tDiv, score: getScore(TIERS.indexOf(tTier), inputs.tDiv), isPreferred: inputs.tPref },
+            dps: { tier: dTier, div: inputs.dDiv, score: getScore(TIERS.indexOf(dTier), inputs.dDiv), isPreferred: inputs.dPref },
+            sup: { tier: sTier, div: inputs.sDiv, score: getScore(TIERS.indexOf(sTier), inputs.sDiv), isPreferred: inputs.sPref },
         };
         setPlayers(prev => [...prev, newPlayer]);
         setInputs(prev => ({ ...prev, name: '', tPref: false, dPref: false, sPref: false }));

@@ -2,7 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Pretendard Font */
 @font-face {
     font-family: 'Pretendard';
     src: url('/fonts/Pretendard-Thin.woff2') format('woff2');
@@ -75,7 +74,6 @@
     font-display: swap;
 }
 
-/* Base Styles */
 @layer base {
     body {
         @apply bg-surface text-slate-200 antialiased;
@@ -87,7 +85,6 @@
     }
 }
 
-/* Component Styles */
 @layer components {
     .btn-primary {
         @apply px-5 py-2.5 bg-accent hover:bg-accent-hover text-white font-semibold rounded-lg
@@ -119,7 +116,6 @@
     }
 }
 
-/* Scrollbar */
 .custom-scrollbar::-webkit-scrollbar {
     width: 6px;
 }
@@ -137,7 +133,6 @@
     background: #475569;
 }
 
-/* Tab Styles */
 .tab-active {
     @apply text-white border-b-2 border-accent;
 }

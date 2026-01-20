@@ -2,30 +2,22 @@ import { useState, useCallback } from 'react';
 import { Player, TeamResult, MatchResultData, Role, Rank, RoleAssignment } from '../types';
 
 /**
- * 선호 역할에 배치될 때 추가되는 보너스 점수
- * 매우 큰 값으로 설정하여 선호 역할 배치를 우선시
+ * @description 선호 역할 배치를 우선시키기 위한 보너스 점수 상수.
  */
 const PREFERRED_BONUS = 100_000_000;
 
 /**
- * 다른 역할이 선호로 표시되어 있을 때의 페널티
- * 선호하지 않는 역할에 배치되는 것을 방지
+ * @description 다른 역할이 선호일 때 배치를 억제하는 페널티 점수 상수.
  */
 const PREFERRED_PENALTY = 50_000_000;
 
 /**
- * 플레이어의 특정 역할에 대한 알고리즘 점수 계산
- *
- * 점수 구성:
- * - 기본 점수: 해당 역할의 티어 기반 점수
- * - 선호 보너스: 해당 역할이 선호 역할이면 +1억
- * - 비선호 페널티: 다른 역할이 선호로 표시되어 있으면 -5천만
- *
+ * @description 플레이어의 역할별 알고리즘 점수를 계산한다 (선호도 반영).
  * @param player - 플레이어 객체
  * @param role - 계산할 역할
  * @returns 알고리즘 점수
  */
-const getPlayerRoleScore = (player: Player, role: Role): number => {
+const getPlayerAlgoScore = (player: Player, role: Role): number => {
     const rankMap: Record<Role, Rank> = {
         'TANK': player.tank,
         'DPS': player.dps,
@@ -37,12 +29,10 @@ const getPlayerRoleScore = (player: Player, role: Role): number => {
 
     let score = rank.score;
 
-    // 선호 역할 보너스
     if (rank.isPreferred) {
         score += PREFERRED_BONUS;
     }
 
-    // 다른 역할이 선호일 때 페널티
     const otherRoles: Role[] = (['TANK', 'DPS', 'SUPPORT'] as Role[]).filter(r => r !== role);
     const prefersOther = otherRoles.some(r => rankMap[r]?.isPreferred);
 
@@ -54,26 +44,33 @@ const getPlayerRoleScore = (player: Player, role: Role): number => {
 };
 
 /**
- * 팀 내 최적의 역할 배치를 찾는 함수
- *
- * 5명의 플레이어를 1탱 2딜 2힐로 배치하는 모든 조합(60가지)을 평가하여
- * 알고리즘 점수가 가장 높은 배치를 반환
- *
- * @param teamPlayers - 5명의 플레이어 배열
- * @returns 최적 배치, 알고리즘 점수, 실제 점수
+ * @description 플레이어의 역할별 실제 점수를 반환한다 (순수 티어 기반).
+ * @param player - 플레이어 객체
+ * @param role - 계산할 역할
+ * @returns 실제 점수
  */
-const getBestTeamAssignment = (teamPlayers: Player[]): {
+const getPlayerRealScore = (player: Player, role: Role): number => {
+    const rankMap: Record<Role, Rank> = {
+        'TANK': player.tank,
+        'DPS': player.dps,
+        'SUPPORT': player.sup
+    };
+    return rankMap[role]?.score || 0;
+};
+
+interface AssignmentResult {
     assignment: RoleAssignment;
     algoScore: number;
     realScore: number;
-} => {
-    let bestScore = -Infinity;
-    let bestRealScore = 0;
-    let bestAssignment: RoleAssignment = {
-        TANK: [],
-        DPS: [],
-        SUPPORT: []
-    };
+}
+
+/**
+ * @description 5인 팀의 모든 역할 배치 조합을 생성한다.
+ * @param teamPlayers - 5명의 플레이어 배열
+ * @returns 모든 가능한 배치 결과 배열
+ */
+const getAllTeamAssignments = (teamPlayers: Player[]): AssignmentResult[] => {
+    const results: AssignmentResult[] = [];
 
     // 탱커 1명 선택 (5가지)
     for (let t = 0; t < 5; t++) {
@@ -96,49 +93,73 @@ const getBestTeamAssignment = (teamPlayers: Player[]): {
                 const pSup1 = teamPlayers[s1];
                 const pSup2 = teamPlayers[s2];
 
-                // 알고리즘 점수 계산 (선호도 보너스/페널티 포함)
-                const currentAlgoScore =
-                    getPlayerRoleScore(pTank, 'TANK') +
-                    getPlayerRoleScore(pDps1, 'DPS') +
-                    getPlayerRoleScore(pDps2, 'DPS') +
-                    getPlayerRoleScore(pSup1, 'SUPPORT') +
-                    getPlayerRoleScore(pSup2, 'SUPPORT');
+                const algoScore =
+                    getPlayerAlgoScore(pTank, 'TANK') +
+                    getPlayerAlgoScore(pDps1, 'DPS') +
+                    getPlayerAlgoScore(pDps2, 'DPS') +
+                    getPlayerAlgoScore(pSup1, 'SUPPORT') +
+                    getPlayerAlgoScore(pSup2, 'SUPPORT');
 
-                if (currentAlgoScore > bestScore) {
-                    bestScore = currentAlgoScore;
+                const realScore =
+                    getPlayerRealScore(pTank, 'TANK') +
+                    getPlayerRealScore(pDps1, 'DPS') +
+                    getPlayerRealScore(pDps2, 'DPS') +
+                    getPlayerRealScore(pSup1, 'SUPPORT') +
+                    getPlayerRealScore(pSup2, 'SUPPORT');
 
-                    // 실제 점수 계산 (순수 티어 기반)
-                    const currentRealScore =
-                        pTank.tank.score +
-                        pDps1.dps.score + pDps2.dps.score +
-                        pSup1.sup.score + pSup2.sup.score;
-
-                    bestRealScore = currentRealScore;
-                    bestAssignment = {
+                results.push({
+                    assignment: {
                         TANK: [pTank],
                         DPS: [pDps1, pDps2],
                         SUPPORT: [pSup1, pSup2]
-                    };
-                }
+                    },
+                    algoScore,
+                    realScore
+                });
             }
         }
     }
 
-    return {
-        assignment: bestAssignment,
-        algoScore: bestScore,
-        realScore: bestRealScore
-    };
+    return results;
 };
 
 /**
- * 10명 플레이어 팀 밸런싱 훅
+ * @description 선호 역할이 제대로 배치되었는지 확인한다.
+ * @param assignment - 역할 배치
+ * @returns 선호 역할 위반 수 (낮을수록 좋음)
+ */
+const countPreferenceViolations = (assignment: RoleAssignment): number => {
+    let violations = 0;
+
+    // 탱커가 다른 역할 선호하는지
+    const tank = assignment.TANK[0];
+    if (tank && (tank.dps.isPreferred || tank.sup.isPreferred) && !tank.tank.isPreferred) {
+        violations++;
+    }
+
+    // 딜러가 다른 역할 선호하는지
+    for (const dps of assignment.DPS) {
+        if (dps && (dps.tank.isPreferred || dps.sup.isPreferred) && !dps.dps.isPreferred) {
+            violations++;
+        }
+    }
+
+    // 힐러가 다른 역할 선호하는지
+    for (const sup of assignment.SUPPORT) {
+        if (sup && (sup.tank.isPreferred || sup.dps.isPreferred) && !sup.sup.isPreferred) {
+            violations++;
+        }
+    }
+
+    return violations;
+};
+
+/**
+ * @description 10명을 5:5로 나눈 모든 조합을 평가해 최적 밸런스를 찾는 훅.
  *
- * 알고리즘 개요:
- * 1. 10명을 5:5로 나누는 모든 조합 생성 (C(10,5)/2 = 126가지, 중복 제거)
- * 2. 각 팀에서 최적의 역할 배치 계산
- * 3. 알고리즘 점수 차이가 가장 작은 조합 선택
- * 4. 동점 시 실제 점수 차이가 작은 것 우선
+ * 최적화 우선순위:
+ * 1. 선호 역할 위반 최소화
+ * 2. 실제 점수 차이 최소화
  *
  * @returns balanceTeams 함수, 결과, 로딩 상태
  */
@@ -146,11 +167,6 @@ export const useBalance = () => {
     const [isBalancing, setIsBalancing] = useState(false);
     const [result, setResult] = useState<MatchResultData | null>(null);
 
-    /**
-     * 10명의 플레이어를 두 팀으로 밸런싱
-     *
-     * @param players - 정확히 10명의 플레이어 배열
-     */
     const balanceTeams = useCallback((players: Player[]) => {
         if (players.length !== 10) {
             alert(`플레이어가 10명이어야 합니다. (현재: ${players.length}명)`);
@@ -159,18 +175,16 @@ export const useBalance = () => {
 
         setIsBalancing(true);
 
-        // UI 블로킹 방지를 위한 비동기 처리
         setTimeout(() => {
             try {
                 const n = 10;
 
-                let minDiff = Infinity;
-                let bestAlgoDiff = Infinity;
+                let bestRealDiff = Infinity;
+                let bestViolations = Infinity;
                 let finalTeamA: TeamResult | null = null;
                 let finalTeamB: TeamResult | null = null;
 
                 // 5명 조합 생성 (비트마스크 사용)
-                // 첫 번째 플레이어는 항상 A팀에 포함시켜 중복 제거
                 const combinations: number[] = [];
 
                 const generateCombos = (start: number, count: number, mask: number) => {
@@ -183,10 +197,10 @@ export const useBalance = () => {
                     }
                 };
 
-                // 첫 번째 플레이어(인덱스 0)를 A팀에 고정하고 나머지 4명 선택
+                // 첫 번째 플레이어를 A팀에 고정하여 중복 제거
                 generateCombos(1, 4, 1);
 
-                // 각 조합 평가
+                // 각 팀 조합 평가
                 for (const maskA of combinations) {
                     const maskB = ((1 << n) - 1) ^ maskA;
                     const teamAPlayers: Player[] = [];
@@ -197,30 +211,50 @@ export const useBalance = () => {
                         else teamBPlayers.push(players[i]);
                     }
 
-                    const resA = getBestTeamAssignment(teamAPlayers);
-                    const resB = getBestTeamAssignment(teamBPlayers);
+                    // 각 팀의 모든 역할 배치 조합
+                    const teamAAssignments = getAllTeamAssignments(teamAPlayers);
+                    const teamBAssignments = getAllTeamAssignments(teamBPlayers);
 
-                    const algoDiff = Math.abs(resA.algoScore - resB.algoScore);
-                    const realDiff = Math.abs(resA.realScore - resB.realScore);
+                    // 모든 A팀 배치 × B팀 배치 조합 평가
+                    for (const resA of teamAAssignments) {
+                        for (const resB of teamBAssignments) {
+                            const realDiff = Math.abs(resA.realScore - resB.realScore);
+                            const violations =
+                                countPreferenceViolations(resA.assignment) +
+                                countPreferenceViolations(resB.assignment);
 
-                    // 알고리즘 점수 차이 우선, 동점시 실제 점수 차이
-                    if (algoDiff < bestAlgoDiff || (algoDiff === bestAlgoDiff && realDiff < minDiff)) {
-                        bestAlgoDiff = algoDiff;
-                        minDiff = realDiff;
+                            // 우선순위: 1) 선호 위반 최소 2) 실제 점수 차이 최소
+                            const isBetter =
+                                violations < bestViolations ||
+                                (violations === bestViolations && realDiff < bestRealDiff);
 
-                        finalTeamA = { ...resA, name: "TEAM 1" };
-                        finalTeamB = { ...resB, name: "TEAM 2" };
+                            if (isBetter) {
+                                bestViolations = violations;
+                                bestRealDiff = realDiff;
 
-                        // 완벽한 밸런스 찾으면 조기 종료
-                        if (algoDiff === 0 && realDiff === 0) break;
+                                finalTeamA = {
+                                    ...resA,
+                                    name: "TEAM 1"
+                                };
+                                finalTeamB = {
+                                    ...resB,
+                                    name: "TEAM 2"
+                                };
+
+                                // 완벽한 밸런스면 조기 종료
+                                if (violations === 0 && realDiff === 0) break;
+                            }
+                        }
+                        if (bestViolations === 0 && bestRealDiff === 0) break;
                     }
+                    if (bestViolations === 0 && bestRealDiff === 0) break;
                 }
 
                 if (finalTeamA && finalTeamB) {
                     setResult({
                         teamA: finalTeamA,
                         teamB: finalTeamB,
-                        diff: minDiff
+                        diff: bestRealDiff
                     });
                 }
 

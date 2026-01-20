@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Star } from 'lucide-react';
 import { formatRank } from '../../../constants';
-import { TeamResult, Role } from '../../../types';
+import { TeamResult, Role, Player } from '../../../types';
 import { DamageIcon, SupportIcon, TankIcon } from "../../roles/icon";
 
 export interface SwapSource {
@@ -19,7 +19,61 @@ interface TeamCardProps {
     swapSource: SwapSource | null;
 }
 
+interface PlayerTooltipProps {
+    player: Player;
+    visible: boolean;
+}
+
+const PlayerTooltip = ({ player, visible }: PlayerTooltipProps) => {
+    if (!visible) return null;
+
+    return (
+        <div className="absolute left-0 top-full mt-2 z-50 bg-surface-elevated border border-slate-700 rounded-lg p-3 shadow-xl min-w-[180px] animate-fade-in">
+            <div className="text-xs font-semibold text-slate-200 mb-2 pb-2 border-b border-slate-700">
+                {player.name}
+            </div>
+            <div className="space-y-1.5">
+                <TooltipRow
+                    icon={<TankIcon size={14} />}
+                    label="탱커"
+                    rank={player.tank}
+                />
+                <TooltipRow
+                    icon={<DamageIcon size={14} />}
+                    label="딜러"
+                    rank={player.dps}
+                />
+                <TooltipRow
+                    icon={<SupportIcon size={14} />}
+                    label="힐러"
+                    rank={player.sup}
+                />
+            </div>
+        </div>
+    );
+};
+
+interface TooltipRowProps {
+    icon: React.ReactNode;
+    label: string;
+    rank: Player['tank'];
+}
+
+const TooltipRow = ({ icon, label, rank }: TooltipRowProps) => (
+    <div className={`flex items-center justify-between text-xs ${rank.isPreferred ? 'text-amber-400' : 'text-slate-400'}`}>
+        <div className="flex items-center gap-1.5">
+            {icon}
+            <span>{label}</span>
+            {rank.isPreferred && <Star size={10} className="fill-amber-400" />}
+        </div>
+        <span className={`font-mono ${rank.isPreferred ? 'font-semibold' : ''}`}>
+            {formatRank(rank).replace('★', '')}
+        </span>
+    </div>
+);
+
 const TeamCard = ({ title, teamData, teamIdx, color, onSlotClick, swapSource }: TeamCardProps) => {
+    const [hoveredPlayer, setHoveredPlayer] = useState<string | null>(null);
 
     const borderColor = color === 'blue' ? 'border-blue-500/30' : 'border-red-500/30';
     const titleColor = color === 'blue' ? 'text-blue-400' : 'text-red-400';
@@ -41,13 +95,13 @@ const TeamCard = ({ title, teamData, teamIdx, color, onSlotClick, swapSource }: 
     const roles: Role[] = ['TANK', 'DPS', 'DPS', 'SUPPORT', 'SUPPORT'];
 
     return (
-        <div className={`bg-[#151821] border ${borderColor} rounded-xl overflow-hidden shadow-xl`}>
+        <div className={`bg-surface-elevated border ${borderColor} rounded-xl overflow-hidden shadow-xl`}>
             <div className="p-4 bg-slate-800/40 border-b border-slate-800 flex justify-between items-center">
                 <h3 className={`font-bold text-lg ${titleColor}`}>{title}</h3>
                 <span className="text-slate-500 font-bold">{teamData.realScore.toLocaleString()}</span>
             </div>
             <div className="p-2">
-                <table className="w-full text-sm border-collapse"> {/* border-collapse 추가 */}
+                <table className="w-full text-sm border-collapse">
                     <thead>
                     <tr className="text-slate-500 text-xs text-left">
                         <th className="p-2 font-medium w-12 text-center">Role</th>
@@ -64,35 +118,37 @@ const TeamCard = ({ title, teamData, teamIdx, color, onSlotClick, swapSource }: 
                         const player = teamData.assignment[roleKey][arrayIndex];
                         if (!player) return null;
 
+                        const playerId = `${teamIdx}-${roleKey}-${arrayIndex}`;
                         const isSelected = swapSource?.teamIdx === teamIdx && swapSource?.role === roleKey && swapSource?.index === arrayIndex;
                         const rankInfo = roleKey === 'TANK' ? player.tank : roleKey === 'DPS' ? player.dps : player.sup;
                         const tierImg = getTierImage(rankInfo.tier);
+                        const isHovered = hoveredPlayer === playerId;
 
                         return (
                             <tr
-                                key={`${roleKey}-${arrayIndex}`}
+                                key={playerId}
                                 onClick={() => onSlotClick(teamIdx, roleKey, arrayIndex)}
+                                onMouseEnter={() => setHoveredPlayer(playerId)}
+                                onMouseLeave={() => setHoveredPlayer(null)}
                                 className={`
                                     border-b border-slate-800/50 cursor-pointer transition-colors
                                     ${isSelected ? 'bg-blue-900/30 ring-1 ring-blue-500 inset-0' : 'hover:bg-slate-800'}
                                 `}
                             >
-                                {/* [Role] td 자체는 table-cell 유지(flex 제거), 내용은 div로 감싸서 정렬 */}
                                 <td className="py-2 px-3 align-middle w-12 text-center">
                                     <div className="flex items-center justify-center">
                                         {getRoleIcon(roleKey)}
                                     </div>
                                 </td>
 
-                                {/* [Player] align-middle로 수직 중앙 강제 */}
-                                <td className="py-2 px-3 align-middle font-medium">
+                                <td className="py-2 px-3 align-middle font-medium relative">
                                     <div className="flex items-center gap-1 text-slate-200">
                                         {player.name}
                                         {rankInfo.isPreferred && <Star size={12} className="text-yellow-400 fill-yellow-400"/>}
                                     </div>
+                                    <PlayerTooltip player={player} visible={isHovered} />
                                 </td>
 
-                                {/* [Tier] align-middle 사용 */}
                                 <td className="py-2 px-3 align-middle text-right font-mono text-slate-300">
                                     <div className="flex items-center justify-end gap-2">
                                         {tierImg && (

@@ -1,8 +1,7 @@
 import { Rank, Tier } from "../types";
 
 /**
- * 오버워치 티어 목록 (낮은 순 → 높은 순)
- * 인덱스가 점수 계산에 사용됨 (0: 브론즈, 7: 챔피언)
+ * @description 티어 순서를 점수 계산 기준으로 고정한 목록.
  */
 export const TIERS: Tier[] = [
     "BRONZE",
@@ -16,7 +15,7 @@ export const TIERS: Tier[] = [
 ];
 
 /**
- * 티어별 한글 라벨 매핑
+ * @description 티어 코드와 UI 표기를 연결하는 라벨 맵.
  */
 export const TIER_LABEL_MAP: Record<string, string> = {
     BRONZE: "브론즈",
@@ -31,15 +30,7 @@ export const TIER_LABEL_MAP: Record<string, string> = {
 };
 
 /**
- * 티어와 등급을 기반으로 점수 계산
- *
- * 점수 공식: (티어 인덱스 × 600) + ((6 - 등급) × 100)
- *
- * 예시:
- * - 브론즈 5: 0 × 600 + (6-5) × 100 = 100
- * - 다이아 1: 4 × 600 + (6-1) × 100 = 2900
- * - 챔피언 1: 7 × 600 + (6-1) × 100 = 4700
- *
+ * @description 티어/등급을 점수로 변환해 로직 전반에서 비교에 사용한다.
  * @param tierIdx - 티어 인덱스 (0~7), -1이면 기본값 반환
  * @param div - 등급 (1~5)
  * @returns 계산된 점수
@@ -50,8 +41,7 @@ export const getScore = (tierIdx: number, div: string | number): number => {
 };
 
 /**
- * Rank 객체를 짧은 문자열로 포맷팅
- *
+ * @description Rank 정보를 UI용 짧은 문자열로 변환한다.
  * @param rankObj - 랭크 객체
  * @returns 포맷된 문자열 (예: "다3", "플1★", "-")
  *
@@ -66,8 +56,7 @@ export const formatRank = (rankObj: Rank): string => {
 };
 
 /**
- * 점수를 티어 문자열로 변환 (대략적인 표시용)
- *
+ * @description 점수를 대략적인 티어 라벨로 변환해 표시용으로 사용한다.
  * @param score - 점수
  * @returns 티어 라벨 (예: "다이아", "플레")
  */
