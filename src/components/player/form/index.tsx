@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, MessageSquareText, Sparkles } from 'lucide-react';
+import { User, MessageSquareText, Sparkles, AlertCircle, X } from 'lucide-react';
 import TierSelect from './tier-select';
 
 interface PlayerFormProps {
@@ -14,12 +14,24 @@ interface PlayerFormProps {
     pasteText: string;
     setPasteText: React.Dispatch<React.SetStateAction<string>>;
     handlePaste: () => void;
+    failedParses: string[];
+    setFailedParses: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
 type InputMode = 'discord' | 'manual';
 
-const PlayerForm = ({ inputs, setInputs, addPlayer, pasteText, setPasteText, handlePaste }: PlayerFormProps) => {
+const PlayerForm = ({ inputs, setInputs, addPlayer, pasteText, setPasteText, handlePaste, failedParses, setFailedParses }: PlayerFormProps) => {
     const [mode, setMode] = useState<InputMode>('discord');
+
+    const handleRemoveFailed = (name: string) => {
+        setFailedParses(prev => prev.filter(n => n !== name));
+    };
+
+    const handleUseForManualInput = (name: string) => {
+        setInputs(prev => ({ ...prev, name }));
+        setFailedParses(prev => prev.filter(n => n !== name));
+        setMode('manual');
+    };
 
     return (
         <div className="card">
@@ -94,9 +106,9 @@ const PlayerForm = ({ inputs, setInputs, addPlayer, pasteText, setPasteText, han
                     </div>
 
                     <div className="space-y-4">
-                        <TierSelect prefix="t" label="🛡️ 탱커" prefKey="tPref" inputs={inputs} setInputs={setInputs} />
-                        <TierSelect prefix="d" label="⚔️ 딜러" prefKey="dPref" inputs={inputs} setInputs={setInputs} />
-                        <TierSelect prefix="s" label="💚 힐러" prefKey="sPref" inputs={inputs} setInputs={setInputs} />
+                        <TierSelect prefix="t" label="탱커" prefKey="tPref" inputs={inputs} setInputs={setInputs} />
+                        <TierSelect prefix="d" label="딜러" prefKey="dPref" inputs={inputs} setInputs={setInputs} />
+                        <TierSelect prefix="s" label="힐러" prefKey="sPref" inputs={inputs} setInputs={setInputs} />
                     </div>
 
                     <button
@@ -106,6 +118,42 @@ const PlayerForm = ({ inputs, setInputs, addPlayer, pasteText, setPasteText, han
                     >
                         플레이어 추가
                     </button>
+                </div>
+            )}
+
+            {/* Failed Parses Section */}
+            {failedParses.length > 0 && (
+                <div className="mt-5 p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl animate-fade-in">
+                    <div className="flex items-center gap-2 mb-3">
+                        <AlertCircle size={14} className="text-amber-400" />
+                        <span className="text-xs font-medium text-amber-400">
+                            파싱 실패 ({failedParses.length}명)
+                        </span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mb-3">
+                        클릭하면 수동 입력으로 이동합니다
+                    </p>
+                    <div className="space-y-2">
+                        {failedParses.map((name) => (
+                            <div
+                                key={name}
+                                className="flex items-center justify-between bg-surface/50 rounded-lg px-3 py-2 group"
+                            >
+                                <button
+                                    onClick={() => handleUseForManualInput(name)}
+                                    className="text-sm text-slate-300 hover:text-white transition-colors text-left flex-1"
+                                >
+                                    {name}
+                                </button>
+                                <button
+                                    onClick={() => handleRemoveFailed(name)}
+                                    className="p-1 text-slate-500 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                                >
+                                    <X size={14} />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             )}
         </div>

@@ -70,7 +70,7 @@ const TierSelect = ({ prefix, label, prefKey, inputs, setInputs }: TierSelectPro
                             value={inputs[divKey]}
                             onChange={(e) => setInputs(prev => ({ ...prev, [divKey]: e.target.value }))}
                         >
-                            {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}등급</option>)}
+                            {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
                         </select>
                         <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
                     </div>

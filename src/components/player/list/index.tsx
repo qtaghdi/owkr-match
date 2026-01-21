@@ -1,5 +1,5 @@
 import React from 'react';
-import { Trash2, Users, AlertCircle } from 'lucide-react';
+import { Trash2, Users, AlertCircle, MicOff, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Player } from '../../../types';
 import { DamageIcon, SupportIcon, TankIcon } from '../../roles/icon';
@@ -7,16 +7,63 @@ import { formatRank } from '../../../constants';
 import RankBadge from './rank-badge';
 
 interface PlayerListProps {
-    players: Player[];
-    setPlayers: React.Dispatch<React.SetStateAction<Player[]>>;
+    participants: Player[];
+    waitlist: Player[];
+    onRemovePlayer: (playerId: number) => void;
+    onClearAll: () => void;
 }
 
-const PlayerList = ({ players = [], setPlayers }: PlayerListProps) => {
-    if (!players) return null;
+const PlayerList = ({ participants, waitlist, onRemovePlayer, onClearAll }: PlayerListProps) => {
+    const participantCount = participants.length;
+    const waitlistCount = waitlist.length;
+    const totalCount = participantCount + waitlistCount;
+    const isReady = participantCount === 10;
 
-    const playerCount = players.length;
-    const isReady = playerCount === 10;
-    const needMore = 10 - playerCount;
+    const renderPlayerItem = (p: Player, isWaitlist: boolean = false) => (
+        <motion.li
+            key={p.id}
+            layout
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, x: -20, transition: { duration: 0.2 } }}
+            className={`group p-3 rounded-xl flex justify-between items-center border transition-all ${
+                isWaitlist
+                    ? 'bg-slate-800/30 hover:bg-slate-800/50 border-slate-700/30 hover:border-slate-600/50'
+                    : 'bg-surface hover:bg-surface-overlay border-slate-800/50 hover:border-slate-700/50'
+            }`}
+        >
+            <div className="min-w-0 flex-1">
+                <div className="font-medium text-sm text-slate-200 truncate flex items-center gap-1.5">
+                    {p.name}
+                    {p.noMic && <MicOff size={12} className="text-red-400 flex-shrink-0" />}
+                </div>
+                <div className="flex items-center gap-3 mt-1.5">
+                    <RankBadge
+                        icon={<TankIcon size={12} />}
+                        rank={p.tank}
+                        label={formatRank(p.tank)}
+                    />
+                    <RankBadge
+                        icon={<DamageIcon size={12} />}
+                        rank={p.dps}
+                        label={formatRank(p.dps)}
+                    />
+                    <RankBadge
+                        icon={<SupportIcon size={12} />}
+                        rank={p.sup}
+                        label={formatRank(p.sup)}
+                    />
+                </div>
+            </div>
+            <button
+                onClick={() => onRemovePlayer(p.id)}
+                className="ml-2 p-2 rounded-lg text-slate-600 hover:text-danger hover:bg-danger-subtle opacity-0 group-hover:opacity-100 transition-all"
+                aria-label="삭제"
+            >
+                <Trash2 size={16} />
+            </button>
+        </motion.li>
+    );
 
     return (
         <div className="card min-h-[300px]">
@@ -25,20 +72,20 @@ const PlayerList = ({ players = [], setPlayers }: PlayerListProps) => {
                 <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2">
                         <Users size={18} className="text-slate-400" />
-                        <h2 className="text-base font-semibold text-white">대기 명단</h2>
+                        <h2 className="text-base font-semibold text-white">참여 명단</h2>
                     </div>
                     <div className={`px-2.5 py-1 rounded-full text-xs font-medium ${
                         isReady
                             ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
                             : 'bg-slate-800 text-slate-400 border border-slate-700'
                     }`}>
-                        {playerCount}/10
+                        {participantCount}/10
                     </div>
                 </div>
 
-                {playerCount > 0 && (
+                {totalCount > 0 && (
                     <button
-                        onClick={() => setPlayers([])}
+                        onClick={onClearAll}
                         className="btn-danger text-xs flex items-center gap-1.5"
                     >
                         <Trash2 size={12} />
@@ -48,62 +95,23 @@ const PlayerList = ({ players = [], setPlayers }: PlayerListProps) => {
             </div>
 
             {/* Status Message */}
-            {!isReady && playerCount > 0 && (
+            {!isReady && participantCount > 0 && (
                 <div className="flex items-center gap-2 px-3 py-2 mb-4 bg-amber-500/10 border border-amber-500/20 rounded-lg">
                     <AlertCircle size={14} className="text-amber-400" />
                     <span className="text-xs text-amber-400">
-                        {needMore}명 더 필요합니다
+                        {10 - participantCount}명 더 필요합니다
                     </span>
                 </div>
             )}
 
-            {/* Player List */}
-            <ul className="space-y-2 max-h-[400px] overflow-y-auto pr-1 custom-scrollbar">
+            {/* Participants List */}
+            <ul className="space-y-2 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
                 <AnimatePresence mode="popLayout">
-                    {players.map((p) => (
-                        <motion.li
-                            key={p.id}
-                            layout
-                            initial={{ opacity: 0, y: -10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, x: -20, transition: { duration: 0.2 } }}
-                            className="group bg-surface hover:bg-surface-overlay p-3 rounded-xl flex justify-between items-center border border-slate-800/50 hover:border-slate-700/50 transition-all"
-                        >
-                            <div className="min-w-0 flex-1">
-                                <div className="font-medium text-sm text-slate-200 truncate">
-                                    {p.name}
-                                </div>
-                                <div className="flex items-center gap-3 mt-1.5">
-                                    <RankBadge
-                                        icon={<TankIcon size={12} />}
-                                        rank={p.tank}
-                                        label={formatRank(p.tank)}
-                                    />
-                                    <RankBadge
-                                        icon={<DamageIcon size={12} />}
-                                        rank={p.dps}
-                                        label={formatRank(p.dps)}
-                                    />
-                                    <RankBadge
-                                        icon={<SupportIcon size={12} />}
-                                        rank={p.sup}
-                                        label={formatRank(p.sup)}
-                                    />
-                                </div>
-                            </div>
-                            <button
-                                onClick={() => setPlayers(players.filter(x => x.id !== p.id))}
-                                className="ml-2 p-2 rounded-lg text-slate-600 hover:text-danger hover:bg-danger-subtle opacity-0 group-hover:opacity-100 transition-all"
-                                aria-label="삭제"
-                            >
-                                <Trash2 size={16} />
-                            </button>
-                        </motion.li>
-                    ))}
+                    {participants.map((p) => renderPlayerItem(p, false))}
                 </AnimatePresence>
 
                 {/* Empty State */}
-                {playerCount === 0 && (
+                {participantCount === 0 && (
                     <motion.li
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
@@ -117,6 +125,27 @@ const PlayerList = ({ players = [], setPlayers }: PlayerListProps) => {
                     </motion.li>
                 )}
             </ul>
+
+            {/* Waitlist Section */}
+            {waitlistCount > 0 && (
+                <div className="mt-6 pt-4 border-t border-slate-800">
+                    <div className="flex items-center gap-2 mb-3">
+                        <Clock size={14} className="text-slate-500" />
+                        <h3 className="text-sm font-medium text-slate-400">대기 명단</h3>
+                        <span className="px-2 py-0.5 rounded-full text-xs bg-slate-800 text-slate-500 border border-slate-700">
+                            {waitlistCount}명
+                        </span>
+                    </div>
+                    <p className="text-[11px] text-slate-600 mb-3">
+                        참여자 제거 시 자동으로 승격됩니다
+                    </p>
+                    <ul className="space-y-2 max-h-[150px] overflow-y-auto pr-1 custom-scrollbar">
+                        <AnimatePresence mode="popLayout">
+                            {waitlist.map((p) => renderPlayerItem(p, true))}
+                        </AnimatePresence>
+                    </ul>
+                </div>
+            )}
         </div>
     );
 };

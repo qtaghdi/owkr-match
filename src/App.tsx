@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Shuffle, RefreshCcw, Loader2, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TIERS, getScore } from './constants';
-import { parseLineToPlayer } from './utils/parser';
+import { parseLineToPlayer, parseMultipleLines } from './utils/parser';
 import { setWithExpiry, getWithExpiry, removeItem, cleanupExpired } from './utils/storage';
 import { useBalance } from './hooks/use-balance';
 import { useAuth } from './hooks/use-auth';
@@ -65,6 +65,7 @@ const App = () => {
         sTier: 'PLATINUM', sDiv: '3', sPref: false
     });
     const [pasteText, setPasteText] = useState('');
+    const [failedParses, setFailedParses] = useState<string[]>([]);
     const [swapSource, setSwapSource] = useState<{ teamIdx: number, role: Role, index: number } | null>(null);
 
     const addPlayer = () => {
@@ -84,21 +85,19 @@ const App = () => {
     };
 
     const handlePaste = () => {
-        const lines = pasteText.split(/\r?\n/).filter(line => line.trim());
-        const parsedPlayers: Player[] = [];
-        lines.forEach(line => {
-            const p = parseLineToPlayer(line);
-            if (p) parsedPlayers.push(p);
-        });
+        const { players: parsedPlayers, failedLines } = parseMultipleLines(pasteText);
         if (parsedPlayers.length > 0) {
             setPlayers(prev => [...prev, ...parsedPlayers]);
-            setPasteText('');
         }
+        if (failedLines.length > 0) {
+            setFailedParses(prev => [...prev, ...failedLines]);
+        }
+        setPasteText('');
     };
 
     const handleRunMatching = () => {
         setResult(null);
-        balanceTeams(players);
+        balanceTeams(players.slice(0, 10));
     };
 
     const handleSlotClick = (teamIdx: number, role: Role, idx: number) => {
@@ -126,10 +125,18 @@ const App = () => {
         }
     };
 
+    // 참여자 제거 시 대기자 자동 승격 처리
+    const handleRemovePlayer = (playerId: number) => {
+        setPlayers(prev => prev.filter(p => p.id !== playerId));
+    };
+
     if (isLoading) return <LoadingScreen />;
     if (!user) return <LoginScreen />;
 
-    const isReady = players.length === 10;
+    // 참여 명단 (첫 10명)과 대기 명단 (나머지) 분리
+    const participants = players.slice(0, 10);
+    const waitlist = players.slice(10);
+    const isReady = participants.length === 10;
 
     return (
         <div className="min-h-screen bg-surface text-slate-200 font-sans">
@@ -175,8 +182,15 @@ const App = () => {
                             pasteText={pasteText}
                             setPasteText={setPasteText}
                             handlePaste={handlePaste}
+                            failedParses={failedParses}
+                            setFailedParses={setFailedParses}
                         />
-                        <PlayerList players={players} setPlayers={setPlayers} />
+                        <PlayerList
+                            participants={participants}
+                            waitlist={waitlist}
+                            onRemovePlayer={handleRemovePlayer}
+                            onClearAll={() => setPlayers([])}
+                        />
                     </div>
 
                     {/* Right Panel - Match Result */}
@@ -232,7 +246,7 @@ const App = () => {
                                             <p className="text-slate-500">
                                                 {isReady
                                                     ? "'팀 짜기' 버튼을 눌러주세요"
-                                                    : `플레이어 ${10 - players.length}명 더 필요`
+                                                    : `플레이어 ${10 - participants.length}명 더 필요`
                                                 }
                                             </p>
                                         </div>

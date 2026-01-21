@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Star } from 'lucide-react';
+import { Star, MicOff } from 'lucide-react';
 import { formatRank } from '../../../constants';
 import { TeamResult, Role, Player } from '../../../types';
 import { DamageIcon, SupportIcon, TankIcon } from '../../roles/icon';
@@ -92,6 +92,7 @@ const TeamCard = ({ title, teamData, teamIdx, color, onSlotClick, swapSource }: 
                                     <div className="flex items-center gap-1 text-slate-200">
                                         {player.name}
                                         {rankInfo.isPreferred && <Star size={12} className="text-yellow-400 fill-yellow-400"/>}
+                                        {player.noMic && <MicOff size={12} className="text-red-400"/>}
                                     </div>
                                     <PlayerTooltip player={player} visible={isHovered} showAbove={idx >= 3} />
                                 </td>
