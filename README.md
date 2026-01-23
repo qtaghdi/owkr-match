@@ -80,4 +80,4 @@ A: 이 서비스는 OWKR 관리자만 등록이 가능합니다. 관리자지만
 
 ## 라이선스
 
-(MIT LICENSE)[./LICNESE.md]
+[MIT License](LICENSE.md)
