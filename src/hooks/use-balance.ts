@@ -246,6 +246,8 @@ export const useBalance = () => {
 
                 let bestRealDiff = Infinity;
                 let bestViolations = Infinity;
+                let bestDispersion = Infinity;
+                let bestTierVariance = Infinity;
                 let finalTeamA: TeamResult | null = null;
                 let finalTeamB: TeamResult | null = null;
 
@@ -287,15 +289,27 @@ export const useBalance = () => {
                             const violations =
                                 countPreferenceViolations(resA.assignment) +
                                 countPreferenceViolations(resB.assignment);
+                            const totalDispersion =
+                                calculateRoleDispersion(resA.assignment) +
+                                calculateRoleDispersion(resB.assignment);
+                            const tierVarianceA = calculateTeamTierVariance(resA.assignment);
+                            const tierVarianceB = calculateTeamTierVariance(resB.assignment);
+                            const maxTierVariance = Math.max(tierVarianceA, tierVarianceB);
 
-                            // 우선순위: 1) 선호 위반 최소 2) 실제 점수 차이 최소
+                            // 합성 점수: 점수 차이와 티어 편차를 동시에 고려
+                            // 티어 편차에 5배 가중치를 주어 편차가 큰 조합을 강하게 페널티
+                            const compositeScore = realDiff + (maxTierVariance * 5) + (totalDispersion * 0.1);
+
+                            // 우선순위: 1) 선호 위반 최소 2) 합성 점수 최소
                             const isBetter =
                                 violations < bestViolations ||
-                                (violations === bestViolations && realDiff < bestRealDiff);
+                                (violations === bestViolations && compositeScore < (bestRealDiff + bestTierVariance * 5 + bestDispersion * 0.1));
 
                             if (isBetter) {
                                 bestViolations = violations;
+                                bestTierVariance = maxTierVariance;
                                 bestRealDiff = realDiff;
+                                bestDispersion = totalDispersion;
 
                                 finalTeamA = {
                                     ...resA,
@@ -305,14 +319,9 @@ export const useBalance = () => {
                                     ...resB,
                                     name: "TEAM 2"
                                 };
-
-                                // 완벽한 밸런스면 조기 종료
-                                if (violations === 0 && realDiff === 0) break;
                             }
                         }
-                        if (bestViolations === 0 && bestRealDiff === 0) break;
                     }
-                    if (bestViolations === 0 && bestRealDiff === 0) break;
                 }
 
                 if (finalTeamA && finalTeamB) {
