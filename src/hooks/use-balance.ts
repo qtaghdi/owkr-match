@@ -155,6 +155,71 @@ const countPreferenceViolations = (assignment: RoleAssignment): number => {
 };
 
 /**
+ * @description 같은 역할 내에서 플레이어들이 비슷한 티어일 때 분산도를 계산한다.
+ * 같은 역할에 비슷한 티어가 몰려있을수록 높은 값을 반환 (낮을수록 좋음).
+ * @param assignment - 역할 배치
+ * @returns 역할별 분산도 점수
+ */
+const calculateRoleDispersion = (assignment: RoleAssignment): number => {
+    let dispersion = 0;
+
+    // 딜러 2명의 점수 차이 (차이가 작을수록 페널티)
+    if (assignment.DPS.length === 2) {
+        const dps1Score = getPlayerRealScore(assignment.DPS[0], 'DPS');
+        const dps2Score = getPlayerRealScore(assignment.DPS[1], 'DPS');
+        const diff = Math.abs(dps1Score - dps2Score);
+        // 점수 차이가 300(티어 0.5단계) 이하면 페널티 추가
+        if (diff <= 300) {
+            dispersion += (300 - diff);
+        }
+    }
+
+    // 힐러 2명의 점수 차이
+    if (assignment.SUPPORT.length === 2) {
+        const sup1Score = getPlayerRealScore(assignment.SUPPORT[0], 'SUPPORT');
+        const sup2Score = getPlayerRealScore(assignment.SUPPORT[1], 'SUPPORT');
+        const diff = Math.abs(sup1Score - sup2Score);
+        if (diff <= 300) {
+            dispersion += (300 - diff);
+        }
+    }
+
+    return dispersion;
+};
+
+/**
+ * @description 팀 전체의 티어 편차를 계산한다. 팀 내 최고/최저 티어 차이가 클수록 높은 값 반환.
+ * @param assignment - 역할 배치
+ * @returns 팀 전체 티어 편차 (낮을수록 좋음)
+ */
+const calculateTeamTierVariance = (assignment: RoleAssignment): number => {
+    const scores: number[] = [];
+
+    // 탱커
+    if (assignment.TANK[0]) {
+        scores.push(getPlayerRealScore(assignment.TANK[0], 'TANK'));
+    }
+
+    // 딜러
+    for (const dps of assignment.DPS) {
+        if (dps) scores.push(getPlayerRealScore(dps, 'DPS'));
+    }
+
+    // 힐러
+    for (const sup of assignment.SUPPORT) {
+        if (sup) scores.push(getPlayerRealScore(sup, 'SUPPORT'));
+    }
+
+    if (scores.length === 0) return 0;
+
+    const maxScore = Math.max(...scores);
+    const minScore = Math.min(...scores);
+
+    // 팀 내 최대-최소 점수 차이 (티어 편차)
+    return maxScore - minScore;
+};
+
+/**
  * @description 10명을 5:5로 나눈 모든 조합을 평가해 최적 밸런스를 찾는 훅.
  *
  * 최적화 우선순위:
