@@ -6,6 +6,7 @@ import { parseLineToPlayer, parseMultipleLines } from './utils/parser';
 import { setWithExpiry, getWithExpiry, removeItem, cleanupExpired } from './utils/storage';
 import { useBalance } from './hooks/use-balance';
 import { useAuth } from './hooks/use-auth';
+import { usePlayerHistory } from './hooks/use-player-history';
 import { Player, Role, MatchResultData, Tier } from './types';
 import PlayerForm from './components/player/form';
 import PlayerList from './components/player/list';
@@ -25,7 +26,8 @@ const App = () => {
         return getWithExpiry<Player[]>(STORAGE_KEYS.PLAYERS) || [];
     });
 
-    const { balanceTeams, result, setResult, isBalancing } = useBalance();
+    const { balanceTeams, result, setResult, alternatives, setAlternatives, isBalancing } = useBalance();
+    const { history, isLoading: historyLoading, error: historyError, fetchHistory, saveHistory } = usePlayerHistory();
 
     const isMounted = useRef(false);
 
@@ -97,7 +99,10 @@ const App = () => {
 
     const handleRunMatching = () => {
         setResult(null);
-        balanceTeams(players.slice(0, 10));
+        setAlternatives([]);
+        const participants = players.slice(0, 10);
+        balanceTeams(participants);
+        saveHistory(participants);
     };
 
     const handleSlotClick = (teamIdx: number, role: Role, idx: number) => {
@@ -184,6 +189,21 @@ const App = () => {
                             handlePaste={handlePaste}
                             failedParses={failedParses}
                             setFailedParses={setFailedParses}
+                            history={history}
+                            historyLoading={historyLoading}
+                            historyError={historyError}
+                            onFetchHistory={fetchHistory}
+                            onAddFromHistory={(historyPlayers) => {
+                                const newPlayers: Player[] = historyPlayers.map(p => ({
+                                    id: Date.now() + Math.random(),
+                                    name: p.name,
+                                    tank: p.tank,
+                                    dps: p.dps,
+                                    sup: p.sup,
+                                    noMic: p.noMic
+                                }));
+                                setPlayers(prev => [...prev, ...newPlayers]);
+                            }}
                         />
                         <PlayerList
                             participants={participants}
@@ -263,6 +283,16 @@ const App = () => {
                                         matchResult={result}
                                         onSlotClick={handleSlotClick}
                                         swapSource={swapSource}
+                                        alternatives={alternatives}
+                                        onSelectAlternative={(idx) => {
+                                            const alt = alternatives[idx];
+                                            if (!alt) return;
+                                            const remaining = alternatives.filter((_, i) => i !== idx);
+                                            remaining.unshift(result!);
+                                            setResult(alt);
+                                            setAlternatives(remaining);
+                                            setSwapSource(null);
+                                        }}
                                     />
                                 </motion.div>
                             )}

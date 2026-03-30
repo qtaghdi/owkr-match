@@ -44,7 +44,12 @@ const TeamCard = ({ title, teamData, teamIdx, color, onSlotClick, swapSource }: 
     return (
         <div className={`bg-surface-elevated border ${borderColor} rounded-xl shadow-xl flex-1 min-w-0`}>
             <div className="p-4 bg-slate-800/40 border-b border-slate-800 flex justify-between items-center rounded-t-xl">
-                <h3 className={`font-bold text-lg ${titleColor}`}>{title}</h3>
+                <div className="flex items-center gap-2">
+                    <h3 className={`font-bold text-lg ${titleColor}`}>{title}</h3>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${color === 'blue' ? 'bg-orange-500/20 text-orange-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                        {color === 'blue' ? '선공격' : '선수비'}
+                    </span>
+                </div>
                 <span className="text-slate-500 font-bold">{teamData.realScore.toLocaleString()}</span>
             </div>
             <div className="p-2 overflow-visible">
