@@ -1,6 +1,16 @@
 import React, { useState } from 'react';
-import { User, MessageSquareText, Sparkles, AlertCircle, X } from 'lucide-react';
+import { User, MessageSquareText, Sparkles, AlertCircle, X, History, Check, Loader2 } from 'lucide-react';
+import { formatRank } from '../../../constants';
+import { Player } from '../../../types';
 import TierSelect from './tier-select';
+
+interface HistoryPlayer {
+    name: string;
+    tank: Player['tank'];
+    dps: Player['dps'];
+    sup: Player['sup'];
+    noMic?: boolean;
+}
 
 interface PlayerFormProps {
     inputs: {
@@ -16,12 +26,19 @@ interface PlayerFormProps {
     handlePaste: () => void;
     failedParses: string[];
     setFailedParses: React.Dispatch<React.SetStateAction<string[]>>;
+    history?: HistoryPlayer[];
+    historyLoading?: boolean;
+    historyError?: string | null;
+    onFetchHistory?: () => void;
+    onAddFromHistory?: (players: HistoryPlayer[]) => void;
 }
 
 type InputMode = 'discord' | 'manual';
 
-const PlayerForm = ({ inputs, setInputs, addPlayer, pasteText, setPasteText, handlePaste, failedParses, setFailedParses }: PlayerFormProps) => {
+const PlayerForm = ({ inputs, setInputs, addPlayer, pasteText, setPasteText, handlePaste, failedParses, setFailedParses, history = [], historyLoading, historyError, onFetchHistory, onAddFromHistory }: PlayerFormProps) => {
     const [mode, setMode] = useState<InputMode>('discord');
+    const [showHistory, setShowHistory] = useState(false);
+    const [selectedHistory, setSelectedHistory] = useState<Set<string>>(new Set());
 
     const handleRemoveFailed = (name: string) => {
         setFailedParses(prev => prev.filter(n => n !== name));
@@ -118,6 +135,83 @@ const PlayerForm = ({ inputs, setInputs, addPlayer, pasteText, setPasteText, han
                     >
                         플레이어 추가
                     </button>
+                </div>
+            )}
+
+            {/* History Section */}
+            {onFetchHistory && (
+                <div className="mt-5">
+                    <button
+                        onClick={() => {
+                            if (!showHistory) onFetchHistory();
+                            setShowHistory(!showHistory);
+                            setSelectedHistory(new Set());
+                        }}
+                        className="flex items-center gap-2 text-xs text-slate-400 hover:text-slate-200 transition-colors"
+                    >
+                        <History size={14} />
+                        최근 참가자
+                    </button>
+
+                    {showHistory && (
+                        <div className="mt-3 p-3 bg-surface rounded-xl border border-slate-800 animate-fade-in">
+                            {historyLoading && (
+                                <div className="flex items-center justify-center py-4">
+                                    <Loader2 size={16} className="animate-spin text-slate-500" />
+                                </div>
+                            )}
+                            {historyError && (
+                                <p className="text-xs text-slate-500 text-center py-2">{historyError}</p>
+                            )}
+                            {!historyLoading && !historyError && history.length === 0 && (
+                                <p className="text-xs text-slate-500 text-center py-2">저장된 참가자가 없습니다</p>
+                            )}
+                            {!historyLoading && history.length > 0 && (
+                                <>
+                                    <div className="space-y-1 max-h-48 overflow-y-auto">
+                                        {history.map((p) => {
+                                            const isSelected = selectedHistory.has(p.name);
+                                            return (
+                                                <button
+                                                    key={p.name}
+                                                    onClick={() => {
+                                                        setSelectedHistory(prev => {
+                                                            const next = new Set(prev);
+                                                            if (next.has(p.name)) next.delete(p.name);
+                                                            else next.add(p.name);
+                                                            return next;
+                                                        });
+                                                    }}
+                                                    className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-left text-xs transition-colors ${
+                                                        isSelected ? 'bg-accent/20 text-white' : 'hover:bg-slate-800 text-slate-300'
+                                                    }`}
+                                                >
+                                                    <span className="truncate">{p.name}</span>
+                                                    <span className="text-[10px] text-slate-500 flex items-center gap-1">
+                                                        {formatRank(p.tank)}/{formatRank(p.dps)}/{formatRank(p.sup)}
+                                                        {isSelected && <Check size={12} className="text-accent" />}
+                                                    </span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    {selectedHistory.size > 0 && (
+                                        <button
+                                            onClick={() => {
+                                                const selected = history.filter(p => selectedHistory.has(p.name));
+                                                onAddFromHistory?.(selected);
+                                                setSelectedHistory(new Set());
+                                                setShowHistory(false);
+                                            }}
+                                            className="btn-primary w-full mt-3 text-xs"
+                                        >
+                                            {selectedHistory.size}명 추가
+                                        </button>
+                                    )}
+                                </>
+                            )}
+                        </div>
+                    )}
                 </div>
             )}
 
