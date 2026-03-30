@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Player, TeamResult, MatchResultData, Role, Rank, RoleAssignment } from '../types';
+import { Player, TeamResult, MatchResultData, BalanceMetrics, Role, Rank, RoleAssignment } from '../types';
 
 /**
  * @description 선호 역할 배치를 우선시키기 위한 보너스 점수 상수.
@@ -10,6 +10,11 @@ const PREFERRED_BONUS = 100_000_000;
  * @description 다른 역할이 선호일 때 배치를 억제하는 페널티 점수 상수.
  */
 const PREFERRED_PENALTY = 50_000_000;
+
+/**
+ * @description 미배치(UNRANKED) 역할에 배치될 때 부여하는 페널티 점수 상수.
+ */
+const UNRANKED_PENALTY = 200_000_000;
 
 /**
  * @description 플레이어의 역할별 알고리즘 점수를 계산한다 (선호도 반영).
@@ -28,6 +33,10 @@ const getPlayerAlgoScore = (player: Player, role: Role): number => {
     if (!rank) return 0;
 
     let score = rank.score;
+
+    if (rank.tier === 'UNRANKED' || rank.score === 0) {
+        score -= UNRANKED_PENALTY;
+    }
 
     if (rank.isPreferred) {
         score += PREFERRED_BONUS;
@@ -155,82 +164,119 @@ const countPreferenceViolations = (assignment: RoleAssignment): number => {
 };
 
 /**
- * @description 같은 역할 내에서 플레이어들이 비슷한 티어일 때 분산도를 계산한다.
- * 같은 역할에 비슷한 티어가 몰려있을수록 높은 값을 반환 (낮을수록 좋음).
+ * @description 팀 내 역할별 점수의 표준편차를 계산한다. 팀 내 실력 편차가 클수록 높은 값 반환.
  * @param assignment - 역할 배치
- * @returns 역할별 분산도 점수
+ * @returns 팀 내 점수 표준편차 (낮을수록 좋음)
  */
-const calculateRoleDispersion = (assignment: RoleAssignment): number => {
-    let dispersion = 0;
-
-    // 딜러 2명의 점수 차이 (차이가 작을수록 페널티)
-    if (assignment.DPS.length === 2) {
-        const dps1Score = getPlayerRealScore(assignment.DPS[0], 'DPS');
-        const dps2Score = getPlayerRealScore(assignment.DPS[1], 'DPS');
-        const diff = Math.abs(dps1Score - dps2Score);
-        // 점수 차이가 300(티어 0.5단계) 이하면 페널티 추가
-        if (diff <= 300) {
-            dispersion += (300 - diff);
-        }
-    }
-
-    // 힐러 2명의 점수 차이
-    if (assignment.SUPPORT.length === 2) {
-        const sup1Score = getPlayerRealScore(assignment.SUPPORT[0], 'SUPPORT');
-        const sup2Score = getPlayerRealScore(assignment.SUPPORT[1], 'SUPPORT');
-        const diff = Math.abs(sup1Score - sup2Score);
-        if (diff <= 300) {
-            dispersion += (300 - diff);
-        }
-    }
-
-    return dispersion;
-};
-
-/**
- * @description 팀 전체의 티어 편차를 계산한다. 팀 내 최고/최저 티어 차이가 클수록 높은 값 반환.
- * @param assignment - 역할 배치
- * @returns 팀 전체 티어 편차 (낮을수록 좋음)
- */
-const calculateTeamTierVariance = (assignment: RoleAssignment): number => {
+const calculateTeamStdDev = (assignment: RoleAssignment): number => {
     const scores: number[] = [];
 
-    // 탱커
-    if (assignment.TANK[0]) {
-        scores.push(getPlayerRealScore(assignment.TANK[0], 'TANK'));
-    }
-
-    // 딜러
-    for (const dps of assignment.DPS) {
-        if (dps) scores.push(getPlayerRealScore(dps, 'DPS'));
-    }
-
-    // 힐러
-    for (const sup of assignment.SUPPORT) {
-        if (sup) scores.push(getPlayerRealScore(sup, 'SUPPORT'));
-    }
+    if (assignment.TANK[0]) scores.push(getPlayerRealScore(assignment.TANK[0], 'TANK'));
+    for (const dps of assignment.DPS) if (dps) scores.push(getPlayerRealScore(dps, 'DPS'));
+    for (const sup of assignment.SUPPORT) if (sup) scores.push(getPlayerRealScore(sup, 'SUPPORT'));
 
     if (scores.length === 0) return 0;
 
-    const maxScore = Math.max(...scores);
-    const minScore = Math.min(...scores);
-
-    // 팀 내 최대-최소 점수 차이 (티어 편차)
-    return maxScore - minScore;
+    const mean = scores.reduce((a, b) => a + b, 0) / scores.length;
+    const variance = scores.reduce((sum, s) => sum + (s - mean) ** 2, 0) / scores.length;
+    return Math.sqrt(variance);
 };
+
+/**
+ * @description 두 팀 간 마이크 미사용 플레이어 수 불균형을 계산한다.
+ * @param teamAPlayers - A팀 플레이어 배열
+ * @param teamBPlayers - B팀 플레이어 배열
+ * @returns 마이크 미사용 플레이어 수 차이 (0이면 균등 분배)
+ */
+const calculateMicImbalance = (teamAPlayers: Player[], teamBPlayers: Player[]): number => {
+    const noMicA = teamAPlayers.filter(p => p.noMic).length;
+    const noMicB = teamBPlayers.filter(p => p.noMic).length;
+    return Math.abs(noMicA - noMicB);
+};
+
+/**
+ * @description 두 팀의 역할별 매치업 점수 차이를 계산한다.
+ * 탱크vs탱크, 딜러 평균vs딜러 평균, 힐러 평균vs힐러 평균의 차이 합산.
+ * @param assignA - A팀 역할 배치
+ * @param assignB - B팀 역할 배치
+ * @returns 역할별 매치업 점수 차이 합 (낮을수록 좋음)
+ */
+const calculateRoleMatchupDiff = (assignA: RoleAssignment, assignB: RoleAssignment): number => {
+    const tankDiff = Math.abs(
+        getPlayerRealScore(assignA.TANK[0], 'TANK') - getPlayerRealScore(assignB.TANK[0], 'TANK')
+    );
+
+    const dpsAvgA = assignA.DPS.reduce((sum, p) => sum + getPlayerRealScore(p, 'DPS'), 0) / assignA.DPS.length;
+    const dpsAvgB = assignB.DPS.reduce((sum, p) => sum + getPlayerRealScore(p, 'DPS'), 0) / assignB.DPS.length;
+    const dpsDiff = Math.abs(dpsAvgA - dpsAvgB);
+
+    const supAvgA = assignA.SUPPORT.reduce((sum, p) => sum + getPlayerRealScore(p, 'SUPPORT'), 0) / assignA.SUPPORT.length;
+    const supAvgB = assignB.SUPPORT.reduce((sum, p) => sum + getPlayerRealScore(p, 'SUPPORT'), 0) / assignB.SUPPORT.length;
+    const supDiff = Math.abs(supAvgA - supAvgB);
+
+    return tankDiff + dpsDiff + supDiff;
+};
+
+/**
+ * @description 두 팀의 역할별 상세 점수 차이를 반환한다.
+ * @param assignA - A팀 역할 배치
+ * @param assignB - B팀 역할 배치
+ * @returns 탱크, 딜러, 힐러 각각의 점수 차이
+ */
+const calculateRoleDiffs = (assignA: RoleAssignment, assignB: RoleAssignment) => {
+    const tankDiff = Math.abs(
+        getPlayerRealScore(assignA.TANK[0], 'TANK') - getPlayerRealScore(assignB.TANK[0], 'TANK')
+    );
+
+    const dpsAvgA = assignA.DPS.reduce((sum, p) => sum + getPlayerRealScore(p, 'DPS'), 0) / assignA.DPS.length;
+    const dpsAvgB = assignB.DPS.reduce((sum, p) => sum + getPlayerRealScore(p, 'DPS'), 0) / assignB.DPS.length;
+    const dpsDiff = Math.abs(dpsAvgA - dpsAvgB);
+
+    const supAvgA = assignA.SUPPORT.reduce((sum, p) => sum + getPlayerRealScore(p, 'SUPPORT'), 0) / assignA.SUPPORT.length;
+    const supAvgB = assignB.SUPPORT.reduce((sum, p) => sum + getPlayerRealScore(p, 'SUPPORT'), 0) / assignB.SUPPORT.length;
+    const supDiff = Math.abs(supAvgA - supAvgB);
+
+    return { tank: Math.round(tankDiff), dps: Math.round(dpsDiff), support: Math.round(supDiff) };
+};
+
+/**
+ * @description 결과에 대한 밸런스 품질 지표를 계산한다.
+ * @param resA - A팀 배치 결과
+ * @param resB - B팀 배치 결과
+ * @returns 밸런스 품질 지표
+ */
+const buildMetrics = (resA: AssignmentResult, resB: AssignmentResult): BalanceMetrics => ({
+    totalDiff: Math.abs(resA.realScore - resB.realScore),
+    roleDiffs: calculateRoleDiffs(resA.assignment, resB.assignment),
+    teamStdDevs: [
+        Math.round(calculateTeamStdDev(resA.assignment)),
+        Math.round(calculateTeamStdDev(resB.assignment))
+    ]
+});
+
+const MAX_ALTERNATIVES = 3;
+
+interface Candidate {
+    teamA: AssignmentResult;
+    teamB: AssignmentResult;
+    violations: number;
+    compositeScore: number;
+    realDiff: number;
+}
 
 /**
  * @description 10명을 5:5로 나눈 모든 조합을 평가해 최적 밸런스를 찾는 훅.
  *
  * 최적화 우선순위:
  * 1. 선호 역할 위반 최소화
- * 2. 실제 점수 차이 최소화
+ * 2. 합성 점수 최소화 (총점 차이 + 역할별 매치업 차이 + 팀 내 편차 + 마이크 불균형)
  *
- * @returns balanceTeams 함수, 결과, 로딩 상태
+ * @returns balanceTeams 함수, 결과/대안 목록, 로딩 상태
  */
 export const useBalance = () => {
     const [isBalancing, setIsBalancing] = useState(false);
     const [result, setResult] = useState<MatchResultData | null>(null);
+    const [alternatives, setAlternatives] = useState<MatchResultData[]>([]);
 
     const balanceTeams = useCallback((players: Player[]) => {
         if (players.length !== 10) {
@@ -244,12 +290,27 @@ export const useBalance = () => {
             try {
                 const n = 10;
 
-                let bestRealDiff = Infinity;
-                let bestViolations = Infinity;
-                let bestDispersion = Infinity;
-                let bestTierVariance = Infinity;
-                let finalTeamA: TeamResult | null = null;
-                let finalTeamB: TeamResult | null = null;
+                // Top N 후보를 유지하는 배열 (정렬 상태)
+                const topCandidates: Candidate[] = [];
+
+                const insertCandidate = (candidate: Candidate) => {
+                    // 삽입 위치 탐색
+                    let pos = topCandidates.length;
+                    for (let i = 0; i < topCandidates.length; i++) {
+                        const existing = topCandidates[i];
+                        const isBetter =
+                            candidate.violations < existing.violations ||
+                            (candidate.violations === existing.violations && candidate.compositeScore < existing.compositeScore);
+                        if (isBetter) { pos = i; break; }
+                    }
+                    topCandidates.splice(pos, 0, candidate);
+                    if (topCandidates.length > MAX_ALTERNATIVES) topCandidates.pop();
+                };
+
+                const getWorstComposite = () =>
+                    topCandidates.length >= MAX_ALTERNATIVES
+                        ? topCandidates[topCandidates.length - 1].compositeScore
+                        : Infinity;
 
                 // 5명 조합 생성 (비트마스크 사용)
                 const combinations: number[] = [];
@@ -278,6 +339,16 @@ export const useBalance = () => {
                         else teamBPlayers.push(players[i]);
                     }
 
+                    // 가지치기: 대략적 점수 차이가 현재 최악 후보의 3배를 넘으면 스킵
+                    const roughScoreA = teamAPlayers.reduce((s, p) => s + Math.max(p.tank.score, p.dps.score, p.sup.score), 0);
+                    const roughScoreB = teamBPlayers.reduce((s, p) => s + Math.max(p.tank.score, p.dps.score, p.sup.score), 0);
+                    const roughDiff = Math.abs(roughScoreA - roughScoreB);
+                    const worstComposite = getWorstComposite();
+                    if (worstComposite < Infinity && roughDiff > worstComposite * 3) continue;
+
+                    // 마이크 불균형은 팀 분할 단위이므로 한 번만 계산
+                    const micImbalance = calculateMicImbalance(teamAPlayers, teamBPlayers);
+
                     // 각 팀의 모든 역할 배치 조합
                     const teamAAssignments = getAllTeamAssignments(teamAPlayers);
                     const teamBAssignments = getAllTeamAssignments(teamBPlayers);
@@ -289,47 +360,32 @@ export const useBalance = () => {
                             const violations =
                                 countPreferenceViolations(resA.assignment) +
                                 countPreferenceViolations(resB.assignment);
-                            const totalDispersion =
-                                calculateRoleDispersion(resA.assignment) +
-                                calculateRoleDispersion(resB.assignment);
-                            const tierVarianceA = calculateTeamTierVariance(resA.assignment);
-                            const tierVarianceB = calculateTeamTierVariance(resB.assignment);
-                            const maxTierVariance = Math.max(tierVarianceA, tierVarianceB);
+                            const roleMatchupDiff = calculateRoleMatchupDiff(resA.assignment, resB.assignment);
+                            const teamVariance = calculateTeamStdDev(resA.assignment) + calculateTeamStdDev(resB.assignment);
 
-                            // 합성 점수: 점수 차이와 티어 편차를 동시에 고려
-                            // 티어 편차에 5배 가중치를 주어 편차가 큰 조합을 강하게 페널티
-                            const compositeScore = realDiff + (maxTierVariance * 5) + (totalDispersion * 0.1);
+                            const compositeScore = realDiff + (roleMatchupDiff * 3) + (teamVariance * 0.5) + (micImbalance * 200);
 
-                            // 우선순위: 1) 선호 위반 최소 2) 합성 점수 최소
-                            const isBetter =
-                                violations < bestViolations ||
-                                (violations === bestViolations && compositeScore < (bestRealDiff + bestTierVariance * 5 + bestDispersion * 0.1));
-
-                            if (isBetter) {
-                                bestViolations = violations;
-                                bestTierVariance = maxTierVariance;
-                                bestRealDiff = realDiff;
-                                bestDispersion = totalDispersion;
-
-                                finalTeamA = {
-                                    ...resA,
-                                    name: "TEAM 1"
-                                };
-                                finalTeamB = {
-                                    ...resB,
-                                    name: "TEAM 2"
-                                };
-                            }
+                            insertCandidate({
+                                teamA: resA,
+                                teamB: resB,
+                                violations,
+                                compositeScore,
+                                realDiff
+                            });
                         }
                     }
                 }
 
-                if (finalTeamA && finalTeamB) {
-                    setResult({
-                        teamA: finalTeamA,
-                        teamB: finalTeamB,
-                        diff: bestRealDiff
+                if (topCandidates.length > 0) {
+                    const toMatchResult = (c: Candidate, idx: number): MatchResultData => ({
+                        teamA: { ...c.teamA, name: "TEAM 1" },
+                        teamB: { ...c.teamB, name: "TEAM 2" },
+                        diff: c.realDiff,
+                        metrics: buildMetrics(c.teamA, c.teamB)
                     });
+
+                    setResult(toMatchResult(topCandidates[0], 0));
+                    setAlternatives(topCandidates.slice(1).map((c, i) => toMatchResult(c, i + 1)));
                 }
 
             } catch (error) {
@@ -341,5 +397,5 @@ export const useBalance = () => {
         }, 50);
     }, []);
 
-    return { balanceTeams, result, setResult, isBalancing };
+    return { balanceTeams, result, setResult, alternatives, setAlternatives, isBalancing };
 };

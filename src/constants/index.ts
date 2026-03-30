@@ -1,6 +1,11 @@
 import { Rank, Tier } from "../types";
 
 /**
+ * @description 커스텀 게임 코드.
+ */
+export const CUSTOM_GAME_CODE = 'SW9P0';
+
+/**
  * @description 티어 순서를 점수 계산 기준으로 고정한 목록.
  */
 export const TIERS: Tier[] = [
@@ -30,14 +35,22 @@ export const TIER_LABEL_MAP: Record<string, string> = {
 };
 
 /**
- * @description 티어/등급을 점수로 변환해 로직 전반에서 비교에 사용한다.
+ * @description 비선형 티어 기본 점수 테이블. 고티어일수록 간격이 커져 실력 격차를 반영한다.
+ */
+const TIER_BASE_SCORES = [0, 500, 1100, 1800, 2600, 3600, 4800, 6200];
+
+/**
+ * @description 티어/등급을 비선형 점수로 변환해 로직 전반에서 비교에 사용한다.
  * @param tierIdx - 티어 인덱스 (0~7), -1이면 기본값 반환
  * @param div - 등급 (1~5)
  * @returns 계산된 점수
  */
 export const getScore = (tierIdx: number, div: string | number): number => {
-    if (tierIdx === -1) return 2250; // 플레 3 기준 기본값
-    return (tierIdx * 600) + ((6 - Number(div)) * 100);
+    if (tierIdx === -1) return 2160; // 플레 3 기준 기본값
+    const base = TIER_BASE_SCORES[tierIdx] ?? 0;
+    const nextBase = TIER_BASE_SCORES[tierIdx + 1] ?? base + 500;
+    const tierGap = nextBase - base;
+    return base + Math.round((tierGap / 5) * (5 - Number(div)));
 };
 
 /**
@@ -61,7 +74,12 @@ export const formatRank = (rankObj: Rank): string => {
  * @returns 티어 라벨 (예: "다이아", "플레")
  */
 export const scoreToTierLabel = (score: number): string => {
-    const tierIdx = Math.floor(score / 600);
-    const clampedIdx = Math.max(0, Math.min(tierIdx, TIERS.length - 1));
-    return TIER_LABEL_MAP[TIERS[clampedIdx]] || "미배치";
+    let tierIdx = 0;
+    for (let i = TIER_BASE_SCORES.length - 1; i >= 0; i--) {
+        if (score >= TIER_BASE_SCORES[i]) {
+            tierIdx = i;
+            break;
+        }
+    }
+    return TIER_LABEL_MAP[TIERS[tierIdx]] || "미배치";
 };

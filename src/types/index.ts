@@ -76,13 +76,27 @@ export interface TeamResult {
 }
 
 /**
+ * @description 밸런스 품질 지표 모델.
+ * @property totalDiff - 팀 총점 차이
+ * @property roleDiffs - 역할별 매치업 점수 차이 (탱크, 딜러, 힐러)
+ * @property teamStdDevs - 각 팀의 내부 점수 표준편차
+ */
+export interface BalanceMetrics {
+    totalDiff: number;
+    roleDiffs: { tank: number; dps: number; support: number };
+    teamStdDevs: [number, number];
+}
+
+/**
  * @description 두 팀 결과와 점수 차이를 묶은 매칭 결과 모델.
  * @property teamA - 1팀 결과
  * @property teamB - 2팀 결과
  * @property diff - 실제 점수 차이
+ * @property metrics - 밸런스 품질 지표
  */
 export interface MatchResultData {
     teamA: TeamResult;
     teamB: TeamResult;
     diff: number;
+    metrics?: BalanceMetrics;
 }
