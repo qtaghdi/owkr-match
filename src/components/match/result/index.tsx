@@ -23,7 +23,7 @@ const MatchResult = ({ matchResult, onSlotClick, swapSource, alternatives = [], 
         <div className="space-y-4">
             {/* 이미지 캡처 영역 */}
             <div ref={captureRef} className="bg-[#0b0c10] p-4 rounded-xl">
-                <div className="flex items-center justify-center gap-2 mb-4 pb-3 border-b border-slate-800">
+                <div data-exclude-export className="flex items-center justify-center gap-2 mb-4 pb-3 border-b border-slate-800">
                     <span className="text-[10px] text-slate-500">커스텀 코드</span>
                     <span className="text-sm font-bold tracking-widest text-slate-200">{CUSTOM_GAME_CODE}</span>
                 </div>

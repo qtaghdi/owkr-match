@@ -20,6 +20,7 @@ export const useCopyImage = (ref: RefObject<HTMLDivElement | null>) => {
                 backgroundColor: '#0b0c10',
                 pixelRatio: 2,
                 cacheBust: true,
+                filter: (node) => !(node instanceof HTMLElement && node.hasAttribute('data-exclude-export')),
             });
 
             const response = await fetch(dataUrl);

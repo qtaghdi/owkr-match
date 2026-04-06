@@ -27,17 +27,20 @@ interface PlayerTooltipProps {
     player: Player;
     visible: boolean;
     showAbove?: boolean;
+    alignRight?: boolean;
 }
 
-const PlayerTooltip = ({ player, visible, showAbove = false }: PlayerTooltipProps) => {
+const PlayerTooltip = ({ player, visible, showAbove = false, alignRight = false }: PlayerTooltipProps) => {
     if (!visible) return null;
 
     const positionClass = showAbove
         ? 'bottom-full mb-2'
         : 'top-full mt-2';
 
+    const alignClass = alignRight ? 'right-0' : 'left-0';
+
     return (
-        <div className={`absolute left-0 ${positionClass} z-50 bg-surface-elevated border border-slate-700 rounded-lg p-3 shadow-xl min-w-[180px] animate-fade-in`}>
+        <div className={`absolute ${alignClass} ${positionClass} z-50 bg-surface-elevated border border-slate-700 rounded-lg p-3 shadow-xl min-w-[180px] animate-fade-in`}>
             <div className="text-xs font-semibold text-slate-200 mb-2 pb-2 border-b border-slate-700">
                 {player.name}
             </div>
