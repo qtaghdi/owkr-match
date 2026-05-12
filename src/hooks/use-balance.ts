@@ -12,6 +12,11 @@ const PREFERRED_BONUS = 100_000_000;
 const PREFERRED_PENALTY = 50_000_000;
 
 /**
+ * @description 비선호(?) 역할에 배치될 때 부여하는 페널티 점수 상수.
+ */
+const AVOIDED_PENALTY = 30_000_000;
+
+/**
  * @description 미배치(UNRANKED) 역할에 배치될 때 부여하는 페널티 점수 상수.
  */
 const UNRANKED_PENALTY = 200_000_000;
@@ -40,6 +45,10 @@ const getPlayerAlgoScore = (player: Player, role: Role): number => {
 
     if (rank.isPreferred) {
         score += PREFERRED_BONUS;
+    }
+
+    if (rank.isAvoided) {
+        score -= AVOIDED_PENALTY;
     }
 
     const otherRoles: Role[] = (['TANK', 'DPS', 'SUPPORT'] as Role[]).filter(r => r !== role);

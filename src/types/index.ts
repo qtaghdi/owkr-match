@@ -23,12 +23,14 @@ export type Tier =
  * @property div - 등급 (1~5, 미배치는 0)
  * @property score - 계산된 점수 (티어 * 600 + (6 - div) * 100)
  * @property isPreferred - 선호 역할 여부 (! 표시)
+ * @property isAvoided - 비선호 역할 여부 (? 표시)
  */
 export interface Rank {
     tier: Tier | string;
     div: number | string;
     score: number;
     isPreferred: boolean;
+    isAvoided: boolean;
 }
 
 /**

@@ -1,4 +1,4 @@
-import { Player, Rank } from "src/types";
+import { Player, Rank, Role } from "src/types";
 import { TIERS, TIER_LABEL_MAP, getScore } from "src/constants";
 
 /**
@@ -89,9 +89,10 @@ const extractEstimatedTier = (text: string): string | null => {
  * @param segment - 파싱할 세그먼트 문자열
  * @returns { tierIdx, div, isPreferred } 또는 null
  */
-const parseRankSegment = (segment: string): { tierIdx: number; div: number; isPreferred: boolean } | null => {
+const parseRankSegment = (segment: string): { tierIdx: number; div: number; isPreferred: boolean; isAvoided: boolean } | null => {
     const isPreferred = segment.includes('!');
-    const cleanSegment = segment.replace(/!/g, '').trim();
+    const isAvoided = segment.includes('?');
+    const cleanSegment = segment.replace(/[!?]/g, '').trim();
 
     // "미배치(골)" 같은 패턴 처리
     if (cleanSegment.match(/미배치|unranked/i)) {
@@ -99,14 +100,17 @@ const parseRankSegment = (segment: string): { tierIdx: number; div: number; isPr
         if (estimated) {
             const tierIdx = findTierIndex(estimated);
             if (tierIdx !== -1) {
-                return { tierIdx, div: 3, isPreferred }; // 예상 티어는 기본 3등급
+                return { tierIdx, div: 3, isPreferred, isAvoided }; // 예상 티어는 기본 3등급
             }
         }
         return null; // 완전히 미배치
     }
 
-    // "(예상)" 패턴 제거
-    const withoutEstimate = cleanSegment.replace(/\(예상\)/g, '').trim();
+    // "(예상)", "(예상 티어)", "(배치중)", "(배치 중)" 패턴 제거
+    const withoutEstimate = cleanSegment
+        .replace(/\(\s*예상[^)]*\)/g, '')
+        .replace(/\(\s*배치\s*중\s*\)/g, '')
+        .trim();
 
     // 일반 패턴: "다이아3", "다3", "플레4", "마1" 등
     const tierDivMatch = withoutEstimate.match(/^([가-힣a-zA-Z]+)\s*(\d)?$/);
@@ -114,7 +118,7 @@ const parseRankSegment = (segment: string): { tierIdx: number; div: number; isPr
         const tierIdx = findTierIndex(tierDivMatch[1]);
         const div = tierDivMatch[2] ? parseInt(tierDivMatch[2]) : 3;
         if (tierIdx !== -1) {
-            return { tierIdx, div, isPreferred };
+            return { tierIdx, div, isPreferred, isAvoided };
         }
     }
 
@@ -128,15 +132,16 @@ const parseRankSegment = (segment: string): { tierIdx: number; div: number; isPr
  * @param isPreferred - 선호 역할 여부
  * @returns Rank 객체
  */
-const createRank = (tierIdx: number, div: number, isPreferred: boolean): Rank => {
+const createRank = (tierIdx: number, div: number, isPreferred: boolean, isAvoided: boolean): Rank => {
     if (tierIdx === -1) {
-        return { tier: 'UNRANKED', div: 0, score: 0, isPreferred: false };
+        return { tier: 'UNRANKED', div: 0, score: 0, isPreferred: false, isAvoided: false };
     }
     return {
         tier: TIERS[tierIdx],
         div,
         score: getScore(tierIdx, div),
-        isPreferred
+        isPreferred,
+        isAvoided
     };
 };
 
@@ -148,7 +153,8 @@ const createUnrankedRank = (): Rank => ({
     tier: 'UNRANKED',
     div: 0,
     score: 0,
-    isPreferred: false
+    isPreferred: false,
+    isAvoided: false
 });
 
 /**
@@ -226,6 +232,10 @@ export const parseLineToPlayer = (line: string): Player | null => {
     const name = nameMatch[1].replace(/\s+/g, '');
     let remainText = cleanLine.slice(cleanLine.indexOf(nameMatch[1]) + nameMatch[1].length).trim();
 
+    // 반복된 선호/비선호 마커를 단일 마커로 정규화한다. (예: !!! -> !, ???? -> ?)
+    // 디스코드에서 자주 쓰는 ★도 선호(!)로 취급한다.
+    remainText = remainText.replace(/★+/g, '!').replace(/!+/g, '!').replace(/\?+/g, '?');
+
     // 이모지 정보 추출 및 제거
     const { cleanText, emojiRoles } = extractEmojiInfo(remainText);
     remainText = cleanText;
@@ -246,10 +256,11 @@ export const parseLineToPlayer = (line: string): Player | null => {
             let part = slashParts[i];
 
             // 역할이 명시되어 있는지 확인 (예: "탱 실3", "딜 브1", "힐 골3", "탱! 실3")
-            const roleMatch = part.match(/^!?(탱(?:커)?|딜(?:러)?|힐(?:러)?|t|d|s)!?\s*/i);
+            const roleMatch = part.match(/^[!?]?(탱(?:커)?|딜(?:러)?|힐(?:러)?|t|d|s)[!?]?\s*/i);
             let currentRole: 'TANK' | 'DPS' | 'SUPPORT' | null = null;
             let rankPart = part;
             let isRolePreferred = part.includes('!') && roleMatch !== null;
+            let isRoleAvoided = part.includes('?') && roleMatch !== null;
 
             if (roleMatch) {
                 currentRole = parseRole(roleMatch[1]);
@@ -262,17 +273,27 @@ export const parseLineToPlayer = (line: string): Player | null => {
             }
 
             // "(배치 중)", "(배치중)", "(예상)" 제거
-            rankPart = rankPart.replace(/\(배치\s*중\)/g, '').replace(/\(예상\)/g, '').trim();
+            rankPart = rankPart
+                .replace(/\(\s*배치\s*중\s*\)/g, '')
+                .replace(/\(\s*예상[^)]*\)/g, '')
+                .trim();
 
             // "!" 처리 - 역할 매칭 없어도 ! 있으면 선호
             if (!isRolePreferred && part.includes('!')) isRolePreferred = true;
+            // "?" 처리 - 역할 매칭 없어도 ? 있으면 비선호
+            if (!isRoleAvoided && part.includes('?')) isRoleAvoided = true;
 
             // 랭크 파싱
             const parsed = parseRankSegment(rankPart);
 
             if (parsed) {
-                // 역할에 !가 붙었으면 선호로 처리
-                const rank = createRank(parsed.tierIdx, parsed.div, parsed.isPreferred || isRolePreferred);
+                // 역할에 ! / ? 가 붙었으면 각각 선호/비선호로 처리
+                const rank = createRank(
+                    parsed.tierIdx,
+                    parsed.div,
+                    parsed.isPreferred || isRolePreferred,
+                    parsed.isAvoided || isRoleAvoided
+                );
 
                 if (currentRole === 'TANK') {
                     tank = rank;
@@ -300,16 +321,31 @@ export const parseLineToPlayer = (line: string): Player | null => {
         const normalizedText = remainText.replace(/[,]/g, ' ');
 
         // 역할-랭크 쌍 추출
-        const roleRankPattern = /(탱(?:커)?|딜(?:러)?|힐(?:러)?|t|d|s)?\s*!?\s*([가-힣a-zA-Z]+)\s*(\d)?\s*(!)?/gi;
+        const roleRankPattern = /(탱(?:커)?|딜(?:러)?|힐(?:러)?|t|d|s)?\s*([!?]+)?\s*([가-힣a-zA-Z]+)\s*(\d)?\s*([!?]+)?/gi;
         const matches = [...normalizedText.matchAll(roleRankPattern)];
 
         let autoIndex = 0;
+        let pendingRole: Role | null = null;
+        let pendingPreferred = false;
+        let pendingAvoided = false;
 
         for (const m of matches) {
             const roleStr = m[1];
-            const tierStr = m[2];
-            const divStr = m[3];
-            const exclamation = m[4];
+            const roleMarker = m[2];
+            const tierStr = m[3];
+            const divStr = m[4];
+            const tailMarker = m[5];
+
+            // 역할 토큰(탱/딜/힐)만 단독으로 잡힌 경우, 다음 티어 토큰에 역할을 연결한다.
+            if (!roleStr) {
+                const parsedRoleOnly = parseRole(tierStr);
+                if (parsedRoleOnly) {
+                    pendingRole = parsedRoleOnly;
+                    pendingPreferred = !!roleMarker?.includes('!') || !!tailMarker?.includes('!');
+                    pendingAvoided = !!roleMarker?.includes('?') || !!tailMarker?.includes('?');
+                    continue;
+                }
+            }
 
             // "미배치" 처리
             if (tierStr.match(/미배치|unranked|배치/i)) {
@@ -326,14 +362,19 @@ export const parseLineToPlayer = (line: string): Player | null => {
             const div = divStr ? parseInt(divStr) : 3;
 
             // ! 표시는 역할 앞이나 뒤에 올 수 있음
-            const isPreferred = !!exclamation || remainText.includes(`${roleStr || ''}!`);
-            const rank = createRank(tierIdx, div, isPreferred);
+            const hasRolePreferredMarker = roleStr ? remainText.includes(`${roleStr}!`) : false;
+            const hasRoleAvoidedMarker = roleStr ? remainText.includes(`${roleStr}?`) : false;
+            const isPreferred = !!roleMarker?.includes('!') || !!tailMarker?.includes('!') || hasRolePreferredMarker || pendingPreferred;
+            const isAvoided = !!roleMarker?.includes('?') || !!tailMarker?.includes('?') || hasRoleAvoidedMarker || pendingAvoided;
+            const rank = createRank(tierIdx, div, isPreferred, isAvoided);
 
-            if (roleStr) {
-                const role = parseRole(roleStr);
-                if (role === 'TANK') tank = rank;
-                else if (role === 'DPS') dps = rank;
-                else if (role === 'SUPPORT') sup = rank;
+            const explicitRole = roleStr ? parseRole(roleStr) : null;
+            const targetRole = explicitRole ?? pendingRole;
+
+            if (targetRole) {
+                if (targetRole === 'TANK') tank = rank;
+                else if (targetRole === 'DPS') dps = rank;
+                else if (targetRole === 'SUPPORT') sup = rank;
             } else {
                 // 역할 명시 없으면 순서대로 할당
                 if (autoIndex === 0) tank = rank;
@@ -341,6 +382,10 @@ export const parseLineToPlayer = (line: string): Player | null => {
                 else if (autoIndex === 2) sup = rank;
                 autoIndex++;
             }
+
+            pendingRole = null;
+            pendingPreferred = false;
+            pendingAvoided = false;
         }
     }
 
@@ -379,9 +424,18 @@ const extractNameOnly = (line: string): string | null => {
  */
 const hasTierInfoOnly = (line: string): boolean => {
     const trimmed = line.trim();
-    // 닉네임#태그가 없고, 슬래시나 이모지 역할이 있는 경우
-    if (trimmed.match(/\d{4,}/)) return false; // 배틀태그 숫자가 있으면 false
-    return trimmed.includes('/') || trimmed.includes(':pob_') || trimmed.includes(':poc_') || trimmed.includes(':pod_');
+    if (!trimmed) return false;
+    // 닉네임#태그가 있으면 티어 전용 줄이 아님
+    if (/[^\s]+#\d{4,}/.test(trimmed)) return false;
+
+    const normalized = trimmed.replace(/★/g, '!').replace(/!+/g, '!').replace(/\?+/g, '?');
+
+    if (normalized === '-' || /미배치|unranked|배치/i.test(normalized)) return true;
+    if (normalized.includes('/') || normalized.includes(':pob_') || normalized.includes(':poc_') || normalized.includes(':pod_')) return true;
+    if (/(탱(?:커)?|딜(?:러)?|힐(?:러)?|t|d|s)\s*[!?]?\s*[가-힣a-zA-Z]+\s*\d?/i.test(normalized)) return true;
+    if (/^[가-힣a-zA-Z]+\s*\d?\s*[!?]?$/.test(normalized)) return true;
+
+    return false;
 };
 
 /**
@@ -415,11 +469,19 @@ export const parseMultipleLines = (text: string): ParseResult => {
             const nameOnly = extractNameOnly(line);
 
             if (nameOnly) {
-                // 다음 줄에 티어 정보가 있는지 확인
-                const nextLine = lines[i + 1];
-                if (nextLine && hasTierInfoOnly(nextLine)) {
-                    // 닉네임 + 다음 줄 티어 정보 합쳐서 파싱
-                    const combinedLine = `${nameOnly} ${nextLine}`;
+                // 다음 1~3줄의 티어 정보를 모아 합쳐서 파싱
+                const tierLines: string[] = [];
+                let j = i + 1;
+                while (j < lines.length && tierLines.length < 3) {
+                    const candidate = lines[j];
+                    if (!hasTierInfoOnly(candidate)) break;
+                    tierLines.push(candidate.trim());
+                    j++;
+                }
+
+                if (tierLines.length > 0) {
+                    // 줄바꿈 입력은 역할 순서 보존을 위해 슬래시로 합친다.
+                    const combinedLine = `${nameOnly} ${tierLines.join(' / ')}`;
                     const player = parseLineToPlayer(combinedLine);
                     if (player && !seenNames.has(player.name)) {
                         players.push(player);
@@ -429,7 +491,7 @@ export const parseMultipleLines = (text: string): ParseResult => {
                         failedLines.push(nameOnly);
                         seenNames.add(nameOnly);
                     }
-                    i++; // 다음 줄 스킵
+                    i = j - 1; // 소비한 티어 줄만큼 스킵
                     continue;
                 } else if (!seenNames.has(nameOnly)) {
                     // 닉네임만 있고 다음 줄에 티어 정보 없음
