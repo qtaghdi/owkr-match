@@ -11,6 +11,8 @@ const RankBadge = ({ icon, rank, label }: RankBadgeProps) => (
     <span className={`flex items-center gap-1 text-[11px] ${
         rank.isPreferred
             ? "text-amber-400 font-semibold"
+            : rank.isAvoided
+                ? "text-rose-400"
             : "text-slate-500"
     }`}>
         {icon}

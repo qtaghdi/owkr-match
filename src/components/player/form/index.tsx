@@ -15,9 +15,9 @@ interface HistoryPlayer {
 interface PlayerFormProps {
     inputs: {
         name: string;
-        tTier: string; tDiv: string; tPref: boolean;
-        dTier: string; dDiv: string; dPref: boolean;
-        sTier: string; sDiv: string; sPref: boolean;
+        tTier: string; tDiv: string; tPref: boolean; tAvoid: boolean;
+        dTier: string; dDiv: string; dPref: boolean; dAvoid: boolean;
+        sTier: string; sDiv: string; sPref: boolean; sAvoid: boolean;
     };
     setInputs: React.Dispatch<React.SetStateAction<PlayerFormProps['inputs']>>;
     addPlayer: () => void;
@@ -103,7 +103,8 @@ const PlayerForm = ({ inputs, setInputs, addPlayer, pasteText, setPasteText, han
                         플레이어 추가하기
                     </button>
                     <p className="text-[11px] text-slate-500 text-center">
-                        티어 뒤에 <span className="text-amber-400 font-semibold">!</span>를 붙이면 선호 포지션으로 설정됩니다
+                        <span className="text-amber-400 font-semibold">!</span>는 선호,
+                        {' '}<span className="text-rose-400 font-semibold">?</span>는 비선호 포지션입니다
                     </p>
                 </div>
             )}
@@ -123,9 +124,9 @@ const PlayerForm = ({ inputs, setInputs, addPlayer, pasteText, setPasteText, han
                     </div>
 
                     <div className="space-y-4">
-                        <TierSelect prefix="t" label="탱커" prefKey="tPref" inputs={inputs} setInputs={setInputs} />
-                        <TierSelect prefix="d" label="딜러" prefKey="dPref" inputs={inputs} setInputs={setInputs} />
-                        <TierSelect prefix="s" label="힐러" prefKey="sPref" inputs={inputs} setInputs={setInputs} />
+                        <TierSelect prefix="t" label="탱커" prefKey="tPref" avoidKey="tAvoid" inputs={inputs} setInputs={setInputs} />
+                        <TierSelect prefix="d" label="딜러" prefKey="dPref" avoidKey="dAvoid" inputs={inputs} setInputs={setInputs} />
+                        <TierSelect prefix="s" label="힐러" prefKey="sPref" avoidKey="sAvoid" inputs={inputs} setInputs={setInputs} />
                     </div>
 
                     <button

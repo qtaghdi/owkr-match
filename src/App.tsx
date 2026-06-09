@@ -62,9 +62,9 @@ const App = () => {
 
     const [inputs, setInputs] = useState({
         name: '',
-        tTier: 'DIAMOND', tDiv: '3', tPref: false,
-        dTier: 'DIAMOND', dDiv: '3', dPref: false,
-        sTier: 'PLATINUM', sDiv: '3', sPref: false
+        tTier: 'DIAMOND', tDiv: '3', tPref: false, tAvoid: false,
+        dTier: 'DIAMOND', dDiv: '3', dPref: false, dAvoid: false,
+        sTier: 'PLATINUM', sDiv: '3', sPref: false, sAvoid: false
     });
     const [pasteText, setPasteText] = useState('');
     const [failedParses, setFailedParses] = useState<string[]>([]);
@@ -78,12 +78,21 @@ const App = () => {
         const newPlayer: Player = {
             id: Date.now(),
             name: inputs.name,
-            tank: { tier: tTier, div: inputs.tDiv, score: getScore(TIERS.indexOf(tTier), inputs.tDiv), isPreferred: inputs.tPref, isAvoided: false },
-            dps: { tier: dTier, div: inputs.dDiv, score: getScore(TIERS.indexOf(dTier), inputs.dDiv), isPreferred: inputs.dPref, isAvoided: false },
-            sup: { tier: sTier, div: inputs.sDiv, score: getScore(TIERS.indexOf(sTier), inputs.sDiv), isPreferred: inputs.sPref, isAvoided: false },
+            tank: { tier: tTier, div: inputs.tDiv, score: getScore(TIERS.indexOf(tTier), inputs.tDiv), isPreferred: inputs.tPref, isAvoided: inputs.tAvoid },
+            dps: { tier: dTier, div: inputs.dDiv, score: getScore(TIERS.indexOf(dTier), inputs.dDiv), isPreferred: inputs.dPref, isAvoided: inputs.dAvoid },
+            sup: { tier: sTier, div: inputs.sDiv, score: getScore(TIERS.indexOf(sTier), inputs.sDiv), isPreferred: inputs.sPref, isAvoided: inputs.sAvoid },
         };
         setPlayers(prev => [...prev, newPlayer]);
-        setInputs(prev => ({ ...prev, name: '', tPref: false, dPref: false, sPref: false }));
+        setInputs(prev => ({
+            ...prev,
+            name: '',
+            tPref: false,
+            dPref: false,
+            sPref: false,
+            tAvoid: false,
+            dAvoid: false,
+            sAvoid: false
+        }));
     };
 
     const handlePaste = () => {

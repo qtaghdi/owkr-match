@@ -1,5 +1,5 @@
 import React from 'react';
-import { Star } from 'lucide-react';
+import { Ban, Star } from 'lucide-react';
 import { formatRank } from '../../../constants';
 import { Player } from '../../../types';
 import { DamageIcon, SupportIcon, TankIcon } from '../../roles/icon';
@@ -11,14 +11,17 @@ interface TooltipRowProps {
 }
 
 const TooltipRow = ({ icon, label, rank }: TooltipRowProps) => (
-    <div className={`flex items-center justify-between text-xs ${rank.isPreferred ? 'text-amber-400' : 'text-slate-400'}`}>
+    <div className={`flex items-center justify-between text-xs ${
+        rank.isPreferred ? 'text-amber-400' : rank.isAvoided ? 'text-rose-400' : 'text-slate-400'
+    }`}>
         <div className="flex items-center gap-1.5">
             {icon}
             <span>{label}</span>
             {rank.isPreferred && <Star size={10} className="fill-amber-400" />}
+            {rank.isAvoided && <Ban size={10} />}
         </div>
         <span className={`font-mono ${rank.isPreferred ? 'font-semibold' : ''}`}>
-            {formatRank(rank).replace('★', '')}
+            {formatRank(rank).replace('★', '').replace('?', '')}
         </span>
     </div>
 );

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Star, MicOff } from 'lucide-react';
+import { Ban, Star, MicOff } from 'lucide-react';
 import { formatRank } from '../../../constants';
 import { MatchResultData, Role, Player } from '../../../types';
 import { DamageIcon, SupportIcon, TankIcon } from '../../roles/icon';
@@ -96,6 +96,7 @@ const MatchupTable = ({ matchResult, onSlotClick, swapSource }: MatchupTableProp
                             >
                                 <span className="text-xs font-medium text-slate-200 truncate">{row.playerA.name}</span>
                                 {rankA.isPreferred && <Star size={10} className="text-yellow-400 fill-yellow-400 shrink-0" />}
+                                {rankA.isAvoided && <Ban size={10} className="text-rose-400 shrink-0" />}
                                 {row.playerA.noMic && <MicOff size={10} className="text-red-400 shrink-0" />}
                                 <div className="flex items-center gap-1 shrink-0">
                                     {tierImgA && (
@@ -103,7 +104,7 @@ const MatchupTable = ({ matchResult, onSlotClick, swapSource }: MatchupTableProp
                                             onError={(e) => e.currentTarget.style.display = 'none'} />
                                     )}
                                     <span className="text-xs font-mono text-slate-300 w-8 text-left">
-                                        {formatRank(rankA).replace('★', '')}
+                                        {formatRank(rankA).replace('★', '').replace('?', '')}
                                     </span>
                                 </div>
                             </button>
@@ -129,7 +130,7 @@ const MatchupTable = ({ matchResult, onSlotClick, swapSource }: MatchupTableProp
                             >
                                 <div className="flex items-center gap-1 shrink-0">
                                     <span className="text-xs font-mono text-slate-300 w-8 text-right">
-                                        {formatRank(rankB).replace('★', '')}
+                                        {formatRank(rankB).replace('★', '').replace('?', '')}
                                     </span>
                                     {tierImgB && (
                                         <img src={tierImgB} alt={rankB.tier} className="w-5 h-5 object-contain"
@@ -137,6 +138,7 @@ const MatchupTable = ({ matchResult, onSlotClick, swapSource }: MatchupTableProp
                                     )}
                                 </div>
                                 {row.playerB.noMic && <MicOff size={10} className="text-red-400 shrink-0" />}
+                                {rankB.isAvoided && <Ban size={10} className="text-rose-400 shrink-0" />}
                                 {rankB.isPreferred && <Star size={10} className="text-yellow-400 fill-yellow-400 shrink-0" />}
                                 <span className="text-xs font-medium text-slate-200 truncate">{row.playerB.name}</span>
                             </button>

@@ -65,7 +65,8 @@ export const getScore = (tierIdx: number, div: string | number): number => {
 export const formatRank = (rankObj: Rank): string => {
     if (!rankObj || rankObj.tier === 'UNRANKED') return "-";
     const shortName = TIER_LABEL_MAP[rankObj.tier]?.[0] || "?";
-    return `${shortName}${rankObj.div}${rankObj.isPreferred ? '★' : ''}`;
+    const intentMark = rankObj.isPreferred ? '★' : rankObj.isAvoided ? '?' : '';
+    return `${shortName}${rankObj.div}${intentMark}`;
 };
 
 /**
