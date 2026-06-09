@@ -173,6 +173,28 @@ const countPreferenceViolations = (assignment: RoleAssignment): number => {
 };
 
 /**
+ * @description 비선호 역할에 배치된 플레이어 수를 계산한다.
+ * @param assignment - 역할 배치
+ * @returns 비선호 역할 배정 수 (낮을수록 좋음)
+ */
+const countAvoidedAssignments = (assignment: RoleAssignment): number => {
+    let avoided = 0;
+
+    const tank = assignment.TANK[0];
+    if (tank?.tank.isAvoided) avoided++;
+
+    for (const dps of assignment.DPS) {
+        if (dps?.dps.isAvoided) avoided++;
+    }
+
+    for (const sup of assignment.SUPPORT) {
+        if (sup?.sup.isAvoided) avoided++;
+    }
+
+    return avoided;
+};
+
+/**
  * @description 팀 내 역할별 점수의 표준편차를 계산한다. 팀 내 실력 편차가 클수록 높은 값 반환.
  * @param assignment - 역할 배치
  * @returns 팀 내 점수 표준편차 (낮을수록 좋음)
@@ -263,12 +285,13 @@ const buildMetrics = (resA: AssignmentResult, resB: AssignmentResult): BalanceMe
     ]
 });
 
-const MAX_ALTERNATIVES = 3;
+const MAX_CANDIDATES = 5;
 
 interface Candidate {
     teamA: AssignmentResult;
     teamB: AssignmentResult;
-    violations: number;
+    preferenceViolations: number;
+    avoidedAssignments: number;
     compositeScore: number;
     realDiff: number;
 }
@@ -278,7 +301,8 @@ interface Candidate {
  *
  * 최적화 우선순위:
  * 1. 선호 역할 위반 최소화
- * 2. 합성 점수 최소화 (총점 차이 + 역할별 매치업 차이 + 팀 내 편차 + 마이크 불균형)
+ * 2. 비선호 역할 배정 최소화
+ * 3. 합성 점수 최소화 (총점 차이 + 역할별 매치업 차이 + 팀 내 편차 + 마이크 불균형)
  *
  * @returns balanceTeams 함수, 결과/대안 목록, 로딩 상태
  */
@@ -308,18 +332,21 @@ export const useBalance = () => {
                     for (let i = 0; i < topCandidates.length; i++) {
                         const existing = topCandidates[i];
                         const isBetter =
-                            candidate.violations < existing.violations ||
-                            (candidate.violations === existing.violations && candidate.compositeScore < existing.compositeScore);
+                            candidate.preferenceViolations < existing.preferenceViolations ||
+                            (
+                                candidate.preferenceViolations === existing.preferenceViolations &&
+                                candidate.avoidedAssignments < existing.avoidedAssignments
+                            ) ||
+                            (
+                                candidate.preferenceViolations === existing.preferenceViolations &&
+                                candidate.avoidedAssignments === existing.avoidedAssignments &&
+                                candidate.compositeScore < existing.compositeScore
+                            );
                         if (isBetter) { pos = i; break; }
                     }
                     topCandidates.splice(pos, 0, candidate);
-                    if (topCandidates.length > MAX_ALTERNATIVES) topCandidates.pop();
+                    if (topCandidates.length > MAX_CANDIDATES) topCandidates.pop();
                 };
-
-                const getWorstComposite = () =>
-                    topCandidates.length >= MAX_ALTERNATIVES
-                        ? topCandidates[topCandidates.length - 1].compositeScore
-                        : Infinity;
 
                 // 5명 조합 생성 (비트마스크 사용)
                 const combinations: number[] = [];
@@ -348,13 +375,6 @@ export const useBalance = () => {
                         else teamBPlayers.push(players[i]);
                     }
 
-                    // 가지치기: 대략적 점수 차이가 현재 최악 후보의 3배를 넘으면 스킵
-                    const roughScoreA = teamAPlayers.reduce((s, p) => s + Math.max(p.tank.score, p.dps.score, p.sup.score), 0);
-                    const roughScoreB = teamBPlayers.reduce((s, p) => s + Math.max(p.tank.score, p.dps.score, p.sup.score), 0);
-                    const roughDiff = Math.abs(roughScoreA - roughScoreB);
-                    const worstComposite = getWorstComposite();
-                    if (worstComposite < Infinity && roughDiff > worstComposite * 3) continue;
-
                     // 마이크 불균형은 팀 분할 단위이므로 한 번만 계산
                     const micImbalance = calculateMicImbalance(teamAPlayers, teamBPlayers);
 
@@ -366,9 +386,12 @@ export const useBalance = () => {
                     for (const resA of teamAAssignments) {
                         for (const resB of teamBAssignments) {
                             const realDiff = Math.abs(resA.realScore - resB.realScore);
-                            const violations =
+                            const preferenceViolations =
                                 countPreferenceViolations(resA.assignment) +
                                 countPreferenceViolations(resB.assignment);
+                            const avoidedAssignments =
+                                countAvoidedAssignments(resA.assignment) +
+                                countAvoidedAssignments(resB.assignment);
                             const roleMatchupDiff = calculateRoleMatchupDiff(resA.assignment, resB.assignment);
                             const teamVariance = calculateTeamStdDev(resA.assignment) + calculateTeamStdDev(resB.assignment);
 
@@ -377,7 +400,8 @@ export const useBalance = () => {
                             insertCandidate({
                                 teamA: resA,
                                 teamB: resB,
-                                violations,
+                                preferenceViolations,
+                                avoidedAssignments,
                                 compositeScore,
                                 realDiff
                             });
