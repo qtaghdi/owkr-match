@@ -46,11 +46,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         const userData = await userResponse.json();
 
-        const admins = (process.env.ADMIN_USER_IDS || '').split(',');
-        if (!admins.includes(userData.id)) {
-            return res.status(403).send(`🚫 관리자가 아닙니다. (ID: ${userData.id})`);
-        }
-
         const token = sign({ id: userData.id, username: userData.username }, process.env.JWT_SECRET!, {
             expiresIn: '7d',
         });

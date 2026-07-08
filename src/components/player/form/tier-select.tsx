@@ -65,9 +65,11 @@ const TierSelect = ({ prefix, label, prefKey, avoidKey, inputs, setInputs }: Tie
                 <div className="w-10 h-10 flex items-center justify-center bg-surface rounded-lg border border-slate-700/50 shrink-0 overflow-hidden p-1.5">
                     {tierImg && (
                         <img
+                            key={tierImg}
                             src={tierImg}
                             alt={currentTier}
                             className="w-full h-full object-contain"
+                            onLoad={(e) => e.currentTarget.style.display = 'block'}
                             onError={(e) => e.currentTarget.style.display = 'none'}
                         />
                     )}

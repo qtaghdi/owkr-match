@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Shuffle, RefreshCcw, Loader2, LogOut } from 'lucide-react';
+import { Shuffle, RefreshCcw, Loader2, LogOut, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TIERS, getScore } from './constants';
-import { parseLineToPlayer, parseMultipleLines } from './utils/parser';
+import { parseMultipleLines } from './utils/parser';
 import { setWithExpiry, getWithExpiry, removeItem, cleanupExpired } from './utils/storage';
 import { useBalance } from './hooks/use-balance';
 import { useAuth } from './hooks/use-auth';
-import { usePlayerHistory } from './hooks/use-player-history';
 import { Player, Role, MatchResultData, Tier } from './types';
 import PlayerForm from './components/player/form';
 import PlayerList from './components/player/list';
@@ -19,6 +18,8 @@ const STORAGE_KEYS = {
     RESULT: 'owkr_result'
 };
 
+const normalizePlayerName = (name: string) => name.trim().toLowerCase();
+
 const App = () => {
     const { user, isLoading } = useAuth();
 
@@ -27,7 +28,6 @@ const App = () => {
     });
 
     const { balanceTeams, result, setResult, alternatives, setAlternatives, isBalancing } = useBalance();
-    const { history, isLoading: historyLoading, error: historyError, fetchHistory, saveHistory } = usePlayerHistory();
 
     const isMounted = useRef(false);
 
@@ -69,15 +69,38 @@ const App = () => {
     const [pasteText, setPasteText] = useState('');
     const [failedParses, setFailedParses] = useState<string[]>([]);
     const [swapSource, setSwapSource] = useState<{ teamIdx: number, role: Role, index: number } | null>(null);
+    const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+    const toastTimerRef = useRef<number | null>(null);
+
+    const showToast = (type: 'success' | 'error', message: string) => {
+        setToast({ type, message });
+        if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+        toastTimerRef.current = window.setTimeout(() => setToast(null), 2800);
+    };
+
+    useEffect(() => {
+        return () => {
+            if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+        };
+    }, []);
 
     const addPlayer = () => {
-        if (!inputs.name.trim()) return;
+        if (!inputs.name.trim()) {
+            showToast('error', '배틀태그를 입력해주세요.');
+            return;
+        }
+        const normalizedName = normalizePlayerName(inputs.name);
+        if (players.some(player => normalizePlayerName(player.name) === normalizedName)) {
+            showToast('error', '이미 추가된 플레이어입니다.');
+            return;
+        }
         const tTier = inputs.tTier as Tier;
         const dTier = inputs.dTier as Tier;
         const sTier = inputs.sTier as Tier;
+        const willJoinWaitlist = players.length >= 10;
         const newPlayer: Player = {
             id: Date.now(),
-            name: inputs.name,
+            name: inputs.name.trim(),
             tank: { tier: tTier, div: inputs.tDiv, score: getScore(TIERS.indexOf(tTier), inputs.tDiv), isPreferred: inputs.tPref, isAvoided: inputs.tAvoid },
             dps: { tier: dTier, div: inputs.dDiv, score: getScore(TIERS.indexOf(dTier), inputs.dDiv), isPreferred: inputs.dPref, isAvoided: inputs.dAvoid },
             sup: { tier: sTier, div: inputs.sDiv, score: getScore(TIERS.indexOf(sTier), inputs.sDiv), isPreferred: inputs.sPref, isAvoided: inputs.sAvoid },
@@ -93,25 +116,64 @@ const App = () => {
             dAvoid: false,
             sAvoid: false
         }));
+        showToast('success', willJoinWaitlist ? '정원 초과로 대기열에 추가했습니다.' : '플레이어를 추가했습니다.');
     };
 
     const handlePaste = () => {
+        if (!pasteText.trim()) {
+            showToast('error', '붙여넣을 디스코드 채팅이 없습니다.');
+            return;
+        }
         const { players: parsedPlayers, failedLines } = parseMultipleLines(pasteText);
-        if (parsedPlayers.length > 0) {
-            setPlayers(prev => [...prev, ...parsedPlayers]);
+        const existingNames = new Set(players.map(player => normalizePlayerName(player.name)));
+        const seenNames = new Set(existingNames);
+        const uniquePlayers = parsedPlayers.filter(player => {
+            const normalizedName = normalizePlayerName(player.name);
+            if (seenNames.has(normalizedName)) return false;
+            seenNames.add(normalizedName);
+            return true;
+        });
+        const duplicateCount = parsedPlayers.length - uniquePlayers.length;
+        const waitlistCount = Math.max(players.length + uniquePlayers.length - 10, 0);
+
+        if (uniquePlayers.length > 0) {
+            setPlayers(prev => [...prev, ...uniquePlayers]);
         }
         if (failedLines.length > 0) {
             setFailedParses(prev => [...prev, ...failedLines]);
+        }
+        if (uniquePlayers.length === 0) {
+            if (duplicateCount > 0) {
+                showToast('error', '이미 추가된 플레이어만 포함되어 있습니다.');
+            } else {
+                showToast('error', '파싱된 플레이어가 없습니다.');
+            }
+        } else if (waitlistCount > 0) {
+            const skippedText = duplicateCount > 0 ? `, 중복 ${duplicateCount}명 제외` : '';
+            showToast('success', `${uniquePlayers.length}명 추가, ${waitlistCount}명은 대기열로 이동${skippedText}`);
+        } else if (failedLines.length > 0 || duplicateCount > 0) {
+            const failedText = failedLines.length > 0 ? `, ${failedLines.length}명 파싱 실패` : '';
+            const duplicateText = duplicateCount > 0 ? `, 중복 ${duplicateCount}명 제외` : '';
+            showToast('error', `${uniquePlayers.length}명 추가${failedText}${duplicateText}`);
+        } else {
+            showToast('success', `${uniquePlayers.length}명을 추가했습니다.`);
         }
         setPasteText('');
     };
 
     const handleRunMatching = () => {
+        if (!isReady) {
+            showToast('error', '팀을 짜려면 참가자 10명이 필요합니다.');
+            return;
+        }
         setResult(null);
         setAlternatives([]);
         const participants = players.slice(0, 10);
-        balanceTeams(participants);
-        saveHistory(participants);
+        try {
+            balanceTeams(participants);
+        } catch {
+            showToast('error', '매칭 중 오류가 발생했습니다.');
+        }
     };
 
     const handleSlotClick = (teamIdx: number, role: Role, idx: number) => {
@@ -134,6 +196,7 @@ const App = () => {
 
             setResult(newResult);
             setSwapSource(null);
+            showToast('success', '포지션을 교체했습니다.');
         } else {
             setSwapSource({ teamIdx, role, index: idx });
         }
@@ -198,21 +261,6 @@ const App = () => {
                             handlePaste={handlePaste}
                             failedParses={failedParses}
                             setFailedParses={setFailedParses}
-                            history={history}
-                            historyLoading={historyLoading}
-                            historyError={historyError}
-                            onFetchHistory={fetchHistory}
-                            onAddFromHistory={(historyPlayers) => {
-                                const newPlayers: Player[] = historyPlayers.map(p => ({
-                                    id: Date.now() + Math.random(),
-                                    name: p.name,
-                                    tank: p.tank,
-                                    dps: p.dps,
-                                    sup: p.sup,
-                                    noMic: p.noMic
-                                }));
-                                setPlayers(prev => [...prev, ...newPlayers]);
-                            }}
                         />
                         <PlayerList
                             participants={participants}
@@ -309,6 +357,24 @@ const App = () => {
                     </div>
                 </div>
             </main>
+            <AnimatePresence>
+                {toast && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 16, scale: 0.96 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 12, scale: 0.96 }}
+                        className={`fixed bottom-6 left-1/2 z-[80] flex -translate-x-1/2 items-center gap-2 rounded-lg border px-4 py-3 text-sm font-medium shadow-2xl backdrop-blur ${
+                            toast.type === 'error'
+                                ? 'border-rose-500/30 bg-rose-950/90 text-rose-100'
+                                : 'border-emerald-500/30 bg-emerald-950/90 text-emerald-100'
+                        }`}
+                        role="status"
+                    >
+                        {toast.type === 'error' ? <AlertCircle size={16} /> : <CheckCircle2 size={16} />}
+                        {toast.message}
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };
