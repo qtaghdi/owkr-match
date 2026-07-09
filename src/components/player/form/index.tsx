@@ -94,7 +94,7 @@ const PlayerForm = ({ inputs, setInputs, addPlayer, pasteText, setPasteText, han
 
             {/* Manual Input Mode */}
             {mode === 'manual' && (
-                <div className="space-y-5 animate-fade-in">
+                <div className="space-y-4 animate-fade-in">
                     <div>
                         <label className="block text-xs font-medium text-slate-400 mb-2">배틀태그</label>
                         <input
@@ -106,7 +106,7 @@ const PlayerForm = ({ inputs, setInputs, addPlayer, pasteText, setPasteText, han
                         />
                     </div>
 
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                         <TierSelect prefix="t" label="탱커" prefKey="tPref" avoidKey="tAvoid" inputs={inputs} setInputs={setInputs} />
                         <TierSelect prefix="d" label="딜러" prefKey="dPref" avoidKey="dAvoid" inputs={inputs} setInputs={setInputs} />
                         <TierSelect prefix="s" label="힐러" prefKey="sPref" avoidKey="sAvoid" inputs={inputs} setInputs={setInputs} />

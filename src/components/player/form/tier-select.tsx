@@ -31,7 +31,7 @@ const TierSelect = ({ prefix, label, prefKey, avoidKey, inputs, setInputs }: Tie
     };
 
     return (
-        <div className="space-y-2">
+        <div className="space-y-1.5">
             <div className="flex justify-between items-center">
                 <span className="text-xs font-medium text-slate-400">{label}</span>
                 <div className="flex gap-1.5">
@@ -62,7 +62,7 @@ const TierSelect = ({ prefix, label, prefKey, avoidKey, inputs, setInputs }: Tie
                 </div>
             </div>
             <div className="flex gap-2 items-center">
-                <div className="w-10 h-10 flex items-center justify-center bg-surface rounded-lg border border-slate-700/50 shrink-0 overflow-hidden p-1.5">
+                <div className="w-9 h-9 flex items-center justify-center bg-surface rounded-lg border border-slate-700/50 shrink-0 overflow-hidden p-1.5">
                     {tierImg && (
                         <img
                             key={tierImg}
