@@ -18,7 +18,7 @@ export const useCopyImage = (ref: RefObject<HTMLDivElement | null>) => {
         try {
             const dataUrl = await toPng(ref.current, {
                 backgroundColor: '#0b0c10',
-                pixelRatio: 2,
+                pixelRatio: 3,
                 cacheBust: true,
                 filter: (node) => !(node instanceof HTMLElement && node.hasAttribute('data-exclude-export')),
             });

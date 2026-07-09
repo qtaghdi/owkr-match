@@ -22,9 +22,9 @@ interface RowDef {
 
 const getRoleIcon = (role: Role) => {
     switch (role) {
-        case 'TANK': return <TankIcon className="text-slate-500" size={16} />;
-        case 'DPS': return <DamageIcon className="text-slate-500" size={16} />;
-        case 'SUPPORT': return <SupportIcon className="text-slate-500" size={16} />;
+        case 'TANK': return <TankIcon className="text-slate-400" size={18} />;
+        case 'DPS': return <DamageIcon className="text-slate-400" size={18} />;
+        case 'SUPPORT': return <SupportIcon className="text-slate-400" size={18} />;
     }
 };
 
@@ -50,19 +50,19 @@ const MatchupTable = ({ matchResult, onSlotClick, swapSource }: MatchupTableProp
         swapSource?.teamIdx === teamIdx && swapSource?.role === role && swapSource?.index === idx;
 
     return (
-        <div className="space-y-1">
+        <div className="space-y-1.5">
             {/* 팀 헤더 */}
-            <div className="flex items-center mb-3">
+            <div className="flex items-center mb-4 px-1">
                 <div className="flex-1 flex items-center gap-2">
-                    <span className="font-bold text-base text-blue-400">TEAM 1</span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-orange-500/20 text-orange-400">선공격</span>
-                    <span className="text-xs text-slate-500 ml-auto">{teamA.realScore.toLocaleString()}</span>
+                    <span className="font-bold text-lg text-blue-400">1팀</span>
+                    <span className="text-xs px-2 py-1 rounded font-semibold bg-orange-500/20 text-orange-300">선공격</span>
+                    <span className="text-sm font-medium text-slate-400 ml-auto">{teamA.realScore.toLocaleString()}점</span>
                 </div>
-                <div className="w-8" />
+                <div className="w-10" />
                 <div className="flex-1 flex items-center gap-2 flex-row-reverse">
-                    <span className="font-bold text-base text-red-400">TEAM 2</span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-emerald-500/20 text-emerald-400">선수비</span>
-                    <span className="text-xs text-slate-500 mr-auto">{teamB.realScore.toLocaleString()}</span>
+                    <span className="font-bold text-lg text-red-400">2팀</span>
+                    <span className="text-xs px-2 py-1 rounded font-semibold bg-emerald-500/20 text-emerald-300">선수비</span>
+                    <span className="text-sm font-medium text-slate-400 mr-auto">{teamB.realScore.toLocaleString()}점</span>
                 </div>
             </div>
 
@@ -80,7 +80,7 @@ const MatchupTable = ({ matchResult, onSlotClick, swapSource }: MatchupTableProp
                 return (
                     <div
                         key={`${row.role}-${row.arrayIndex}`}
-                        className="flex items-center gap-1 rounded-lg border border-slate-800/60"
+                        className="flex items-center gap-1.5 rounded-lg border border-slate-700/70 bg-slate-950/20"
                     >
                         {/* TEAM 1 슬롯 */}
                         <div
@@ -90,20 +90,20 @@ const MatchupTable = ({ matchResult, onSlotClick, swapSource }: MatchupTableProp
                         >
                             <button
                                 onClick={() => onSlotClick(0, row.role, row.arrayIndex)}
-                                className={`w-full flex items-center justify-end gap-1.5 px-3 py-2.5 rounded-l-lg transition-colors text-right min-w-0 ${
+                                className={`w-full flex items-center justify-end gap-2 px-4 py-3 rounded-l-lg transition-colors text-right min-w-0 ${
                                     selA ? 'bg-blue-900/40 ring-1 ring-inset ring-blue-500' : 'hover:bg-slate-800/70'
                                 }`}
                             >
-                                <span className="text-xs font-medium text-slate-200 truncate">{row.playerA.name}</span>
-                                {rankA.isPreferred && <Star size={10} className="text-yellow-400 fill-yellow-400 shrink-0" />}
-                                {rankA.isAvoided && <Ban size={10} className="text-rose-400 shrink-0" />}
-                                {row.playerA.noMic && <MicOff size={10} className="text-red-400 shrink-0" />}
-                                <div className="flex items-center gap-1 shrink-0">
+                                <span className="text-[15px] font-semibold text-slate-100 truncate">{row.playerA.name}</span>
+                                {rankA.isPreferred && <Star size={12} className="text-yellow-400 fill-yellow-400 shrink-0" />}
+                                {rankA.isAvoided && <Ban size={12} className="text-rose-400 shrink-0" />}
+                                {row.playerA.noMic && <MicOff size={12} className="text-red-400 shrink-0" />}
+                                <div className="flex items-center gap-1.5 shrink-0">
                                     {tierImgA && (
-                                        <img src={tierImgA} alt={rankA.tier} className="w-5 h-5 object-contain"
+                                        <img src={tierImgA} alt={rankA.tier} className="w-6 h-6 object-contain"
                                             onError={(e) => e.currentTarget.style.display = 'none'} />
                                     )}
-                                    <span className="text-xs font-mono text-slate-300 w-8 text-left">
+                                    <span className="text-sm font-mono text-slate-200 w-10 text-left">
                                         {formatRank(rankA).replace('★', '').replace('?', '')}
                                     </span>
                                 </div>
@@ -112,7 +112,7 @@ const MatchupTable = ({ matchResult, onSlotClick, swapSource }: MatchupTableProp
                         </div>
 
                         {/* 역할 아이콘 (중앙) */}
-                        <div className="shrink-0 w-8 flex items-center justify-center">
+                        <div className="shrink-0 w-10 flex items-center justify-center">
                             {getRoleIcon(row.role)}
                         </div>
 
@@ -124,23 +124,23 @@ const MatchupTable = ({ matchResult, onSlotClick, swapSource }: MatchupTableProp
                         >
                             <button
                                 onClick={() => onSlotClick(1, row.role, row.arrayIndex)}
-                                className={`w-full flex items-center gap-1.5 px-3 py-2.5 rounded-r-lg transition-colors text-left min-w-0 ${
+                                className={`w-full flex items-center gap-2 px-4 py-3 rounded-r-lg transition-colors text-left min-w-0 ${
                                     selB ? 'bg-red-900/30 ring-1 ring-inset ring-red-500' : 'hover:bg-slate-800/70'
                                 }`}
                             >
-                                <div className="flex items-center gap-1 shrink-0">
-                                    <span className="text-xs font-mono text-slate-300 w-8 text-right">
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                    <span className="text-sm font-mono text-slate-200 w-10 text-right">
                                         {formatRank(rankB).replace('★', '').replace('?', '')}
                                     </span>
                                     {tierImgB && (
-                                        <img src={tierImgB} alt={rankB.tier} className="w-5 h-5 object-contain"
+                                        <img src={tierImgB} alt={rankB.tier} className="w-6 h-6 object-contain"
                                             onError={(e) => e.currentTarget.style.display = 'none'} />
                                     )}
                                 </div>
-                                {row.playerB.noMic && <MicOff size={10} className="text-red-400 shrink-0" />}
-                                {rankB.isAvoided && <Ban size={10} className="text-rose-400 shrink-0" />}
-                                {rankB.isPreferred && <Star size={10} className="text-yellow-400 fill-yellow-400 shrink-0" />}
-                                <span className="text-xs font-medium text-slate-200 truncate">{row.playerB.name}</span>
+                                {row.playerB.noMic && <MicOff size={12} className="text-red-400 shrink-0" />}
+                                {rankB.isAvoided && <Ban size={12} className="text-rose-400 shrink-0" />}
+                                {rankB.isPreferred && <Star size={12} className="text-yellow-400 fill-yellow-400 shrink-0" />}
+                                <span className="text-[15px] font-semibold text-slate-100 truncate">{row.playerB.name}</span>
                             </button>
                             <PlayerTooltip player={row.playerB} visible={hoveredSlot === slotKeyB} alignRight />
                         </div>

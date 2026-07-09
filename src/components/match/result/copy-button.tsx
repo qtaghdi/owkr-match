@@ -14,7 +14,7 @@ const CopyButton = ({ status, onClick }: CopyButtonProps) => {
             onClick={onClick}
             disabled={status === 'loading'}
             className={`
-                flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition-all text-xs
+                flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition-all text-xs shrink-0
                 ${status === 'success'
                     ? 'bg-green-500/20 text-green-400 border border-green-500/50'
                     : status === 'error'
@@ -29,7 +29,7 @@ const CopyButton = ({ status, onClick }: CopyButtonProps) => {
 
             {status === 'loading' ? '캡처 중...' :
                 status === 'success' ? '복사 완료!' :
-                    status === 'error' ? '실패' : '이미지로 복사'}
+                    status === 'error' ? '복사 실패' : '이미지 복사'}
         </button>
     );
 };
