@@ -8,7 +8,7 @@ interface RankBadgeProps {
 }
 
 const RankBadge = ({ icon, rank, label }: RankBadgeProps) => (
-    <span className={`flex items-center gap-1 text-[11px] ${
+    <span className={`flex items-center gap-1 text-xs ${
         rank.isPreferred
             ? "text-amber-400 font-semibold"
             : rank.isAvoided

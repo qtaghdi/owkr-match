@@ -46,7 +46,7 @@ const PlayerForm = ({ inputs, setInputs, addPlayer, pasteText, setPasteText, han
                     }`}
                 >
                     <MessageSquareText size={16} />
-                    디스코드 파싱
+                    채팅 붙여넣기
                 </button>
                 <button
                     onClick={() => setMode('manual')}
@@ -67,12 +67,12 @@ const PlayerForm = ({ inputs, setInputs, addPlayer, pasteText, setPasteText, han
                     <div>
                         <div className="flex items-center gap-2 mb-3">
                             <Sparkles size={14} className="text-accent" />
-                            <span className="text-xs text-slate-400">
-                                디스코드 채팅을 복사해서 붙여넣으세요
+                            <span className="text-sm text-slate-400">
+                                디스코드 채팅 내용을 그대로 붙여넣으세요
                             </span>
                         </div>
                         <textarea
-                            className="input-base h-48 leading-relaxed font-mono text-xs resize-none"
+                            className="input-base h-48 leading-relaxed font-mono text-sm resize-none"
                             placeholder={`예시:\nkimjungun#11853 다5/다1/다5\n학살#38848 다3/마4/다4\nAki#34981 미배치(골)/미배치(플)/플2\n재봉이#31207 그5!/마1!/마4`}
                             value={pasteText}
                             onChange={(e) => setPasteText(e.target.value)}
@@ -83,9 +83,9 @@ const PlayerForm = ({ inputs, setInputs, addPlayer, pasteText, setPasteText, han
                         disabled={!pasteText.trim()}
                         className="btn-primary w-full disabled:opacity-40 disabled:cursor-not-allowed"
                     >
-                        플레이어 추가하기
+                        명단에 추가
                     </button>
-                    <p className="text-[11px] text-slate-500 text-center">
+                    <p className="text-xs text-slate-500 text-center">
                         <span className="text-amber-400 font-semibold">!</span>는 선호,
                         {' '}<span className="text-rose-400 font-semibold">?</span>는 비선호 포지션입니다
                     </p>
@@ -127,12 +127,12 @@ const PlayerForm = ({ inputs, setInputs, addPlayer, pasteText, setPasteText, han
                 <div className="mt-5 p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl animate-fade-in">
                     <div className="flex items-center gap-2 mb-3">
                         <AlertCircle size={14} className="text-amber-400" />
-                        <span className="text-xs font-medium text-amber-400">
-                            파싱 실패 ({failedParses.length}명)
+                        <span className="text-sm font-medium text-amber-400">
+                            읽지 못한 항목 ({failedParses.length}명)
                         </span>
                     </div>
-                    <p className="text-[11px] text-slate-400 mb-3">
-                        클릭하면 수동 입력으로 이동합니다
+                    <p className="text-xs text-slate-400 mb-3">
+                        이름을 누르면 직접 입력으로 옮겨집니다
                     </p>
                     <div className="space-y-2">
                         {failedParses.map((name) => (

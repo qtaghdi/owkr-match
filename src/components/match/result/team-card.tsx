@@ -46,7 +46,7 @@ const TeamCard = ({ title, teamData, teamIdx, color, onSlotClick, swapSource }: 
             <div className="p-4 bg-slate-800/40 border-b border-slate-800 flex justify-between items-center rounded-t-xl">
                 <div className="flex items-center gap-2">
                     <h3 className={`font-bold text-lg ${titleColor}`}>{title}</h3>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${color === 'blue' ? 'bg-orange-500/20 text-orange-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                    <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${color === 'blue' ? 'bg-orange-500/20 text-orange-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
                         {color === 'blue' ? '선공격' : '선수비'}
                     </span>
                 </div>
@@ -56,9 +56,9 @@ const TeamCard = ({ title, teamData, teamIdx, color, onSlotClick, swapSource }: 
                 <table className="w-full text-sm border-collapse overflow-visible">
                     <thead>
                     <tr className="text-slate-500 text-xs text-left">
-                        <th className="p-2 font-medium w-12 text-center">Role</th>
-                        <th className="p-2 font-medium">Player</th>
-                        <th className="p-2 font-medium text-right">Tier</th>
+                        <th className="p-2 font-medium w-12 text-center">포지션</th>
+                        <th className="p-2 font-medium">플레이어</th>
+                        <th className="p-2 font-medium text-right">티어</th>
                     </tr>
                     </thead>
                     <tbody>

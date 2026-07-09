@@ -57,7 +57,7 @@ const PlayerList = ({ participants, waitlist, onRemovePlayer, onClearAll }: Play
             </div>
             <button
                 onClick={() => onRemovePlayer(p.id)}
-                className="ml-2 p-2 rounded-lg text-slate-600 hover:text-danger hover:bg-danger-subtle opacity-0 group-hover:opacity-100 transition-all"
+                className="ml-2 p-2 rounded-lg text-slate-500 hover:text-danger hover:bg-danger-subtle opacity-70 group-hover:opacity-100 transition-all"
                 aria-label="삭제"
             >
                 <Trash2 size={16} />
@@ -89,7 +89,7 @@ const PlayerList = ({ participants, waitlist, onRemovePlayer, onClearAll }: Play
                         className="btn-danger text-xs flex items-center gap-1.5"
                     >
                         <Trash2 size={12} />
-                        전체 삭제
+                        명단 비우기
                     </button>
                 )}
             </div>
@@ -99,7 +99,7 @@ const PlayerList = ({ participants, waitlist, onRemovePlayer, onClearAll }: Play
                 <div className="flex items-center gap-2 px-3 py-2 mb-4 bg-amber-500/10 border border-amber-500/20 rounded-lg">
                     <AlertCircle size={14} className="text-amber-400" />
                     <span className="text-xs text-amber-400">
-                        {10 - participantCount}명 더 필요합니다
+                        팀을 짜려면 {10 - participantCount}명 더 필요합니다
                     </span>
                 </div>
             )}
@@ -120,8 +120,8 @@ const PlayerList = ({ participants, waitlist, onRemovePlayer, onClearAll }: Play
                         <div className="w-12 h-12 rounded-full bg-slate-800/50 flex items-center justify-center mb-3">
                             <Users size={20} className="text-slate-600" />
                         </div>
-                        <p className="text-sm text-slate-500">플레이어를 추가해주세요</p>
-                        <p className="text-xs text-slate-600 mt-1">디스코드 채팅을 복사해서 붙여넣기</p>
+                        <p className="text-sm text-slate-500">아직 추가된 플레이어가 없습니다</p>
+                        <p className="text-xs text-slate-600 mt-1">채팅을 붙여넣거나 직접 입력해 주세요</p>
                     </motion.li>
                 )}
             </ul>
@@ -136,7 +136,7 @@ const PlayerList = ({ participants, waitlist, onRemovePlayer, onClearAll }: Play
                             {waitlistCount}명
                         </span>
                     </div>
-                    <p className="text-[11px] text-slate-600 mb-3">
+                    <p className="text-xs text-slate-600 mb-3">
                         참여자 제거 시 자동으로 승격됩니다
                     </p>
                     <ul className="space-y-2 max-h-[150px] overflow-y-auto pr-1 custom-scrollbar">

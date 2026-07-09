@@ -146,13 +146,13 @@ const App = () => {
             if (duplicateCount > 0) {
                 showToast('error', '이미 추가된 플레이어만 포함되어 있습니다.');
             } else {
-                showToast('error', '파싱된 플레이어가 없습니다.');
+                showToast('error', '읽어낸 플레이어가 없습니다.');
             }
         } else if (waitlistCount > 0) {
             const skippedText = duplicateCount > 0 ? `, 중복 ${duplicateCount}명 제외` : '';
             showToast('success', `${uniquePlayers.length}명 추가, ${waitlistCount}명은 대기열로 이동${skippedText}`);
         } else if (failedLines.length > 0 || duplicateCount > 0) {
-            const failedText = failedLines.length > 0 ? `, ${failedLines.length}명 파싱 실패` : '';
+            const failedText = failedLines.length > 0 ? `, ${failedLines.length}명은 직접 확인 필요` : '';
             const duplicateText = duplicateCount > 0 ? `, 중복 ${duplicateCount}명 제외` : '';
             showToast('error', `${uniquePlayers.length}명 추가${failedText}${duplicateText}`);
         } else {
@@ -273,8 +273,8 @@ const App = () => {
                     {/* Right Panel - Match Result */}
                     <div className="lg:col-span-8">
                         {/* Action Bar */}
-                        <div className="flex items-center justify-between mb-5">
-                            <h2 className="text-lg font-semibold text-white">매칭 결과</h2>
+                        <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+                            <h2 className="text-lg font-semibold text-white">팀 배정 결과</h2>
                             <div className="flex gap-2">
                                 {result && (
                                     <button
@@ -282,7 +282,7 @@ const App = () => {
                                         className="btn-ghost text-sm flex items-center gap-2"
                                     >
                                         <RefreshCcw size={14} />
-                                        초기화
+                                        결과 지우기
                                     </button>
                                 )}
                                 <button
@@ -295,7 +295,7 @@ const App = () => {
                                     ) : (
                                         <Shuffle size={16} />
                                     )}
-                                    팀 짜기
+                                    {isReady ? '팀 자동 배정' : `${10 - participants.length}명 더 필요`}
                                 </button>
                             </div>
                         </div>
@@ -320,10 +320,10 @@ const App = () => {
                                             <div className="w-16 h-16 rounded-full bg-slate-800/50 flex items-center justify-center">
                                                 <Shuffle size={24} className="text-slate-600" />
                                             </div>
-                                            <p className="text-slate-500">
+                                            <p className="text-slate-500 text-center">
                                                 {isReady
-                                                    ? "'팀 짜기' 버튼을 눌러주세요"
-                                                    : `플레이어 ${10 - participants.length}명 더 필요`
+                                                    ? "'팀 자동 배정' 버튼을 눌러주세요"
+                                                    : `플레이어 ${10 - participants.length}명을 더 추가하면 팀을 짤 수 있습니다`
                                                 }
                                             </p>
                                         </div>

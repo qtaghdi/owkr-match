@@ -33,12 +33,12 @@ const TierSelect = ({ prefix, label, prefKey, avoidKey, inputs, setInputs }: Tie
     return (
         <div className="space-y-1.5">
             <div className="flex justify-between items-center">
-                <span className="text-xs font-medium text-slate-400">{label}</span>
+                <span className="text-sm font-medium text-slate-400">{label}</span>
                 <div className="flex gap-1.5">
                     <button
                         type="button"
                         onClick={togglePref}
-                        className={`text-[11px] flex items-center gap-1 px-2 py-1 rounded-md transition-all ${
+                        className={`text-xs flex items-center gap-1 px-2 py-1 rounded-md transition-all ${
                             inputs[prefKey]
                                 ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
                                 : 'bg-slate-800 text-slate-500 border border-slate-700 hover:border-slate-600'
@@ -50,7 +50,7 @@ const TierSelect = ({ prefix, label, prefKey, avoidKey, inputs, setInputs }: Tie
                     <button
                         type="button"
                         onClick={toggleAvoid}
-                        className={`text-[11px] flex items-center gap-1 px-2 py-1 rounded-md transition-all ${
+                        className={`text-xs flex items-center gap-1 px-2 py-1 rounded-md transition-all ${
                             inputs[avoidKey]
                                 ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
                                 : 'bg-slate-800 text-slate-500 border border-slate-700 hover:border-slate-600'
