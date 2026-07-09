@@ -70,6 +70,7 @@ PlayerName#1234 다3! 플2 골1         # ! = preferred
 |----------|---------|
 | `DISCORD_CLIENT_ID` | OAuth2 app ID |
 | `DISCORD_CLIENT_SECRET` | OAuth2 secret |
+| `ADMIN_USER_IDS` | Comma-separated allowed Discord user IDs |
 | `JWT_SECRET` | JWT signing secret |
 
 ## Patterns & Conventions
