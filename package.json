@@ -7,7 +7,7 @@
     "dev": "vite",
     "dev:api": "vercel dev",
     "build": "vite build",
-    "lint": "eslint owkr-match",
+    "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
