@@ -1,26 +1,34 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+
+const BACKGROUND_IMAGES = [
+    '/background/kiriko.jpg',
+    '/background/le-sserafim.jpg',
+    '/background/quest-watch.jpg',
+    '/background/sion.jpg',
+] as const;
 
 const LoginScreen = () => {
+    const backgroundImage = useMemo(
+        () => BACKGROUND_IMAGES[Math.floor(Math.random() * BACKGROUND_IMAGES.length)],
+        [],
+    );
+
     return (
         <div className="login-scene relative min-h-screen overflow-hidden bg-[#080a0f] text-white">
+            <div
+                className="login-background"
+                style={{ backgroundImage: `url(${backgroundImage})` }}
+            />
             <div className="login-ambient login-ambient-a" />
             <div className="login-ambient login-ambient-b" />
 
             <div className="relative z-10 flex min-h-screen items-center justify-center px-5 py-12">
                 <div className="w-full max-w-md text-center">
-                    <div className="space-y-3">
-                        <h1 className="text-5xl font-black tracking-normal text-white md:text-6xl">
-                            OWKR
-                            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-sky-300 via-cyan-200 to-amber-200">
-                                Match V2
-                            </span>
-                        </h1>
-                        <p className="mx-auto max-w-xs text-sm leading-6 text-slate-300/80">
-                            관리자 전용 내전 매칭 서비스
-                        </p>
-                    </div>
+                    <p className="mx-auto max-w-xs text-sm leading-6 text-slate-300/80">
+                        OWKR 관리자 전용 내전 매칭 서비스
+                    </p>
 
-                    <div className="mt-9 rounded-lg border border-white/10 bg-slate-950/35 p-2 shadow-2xl shadow-black/30 backdrop-blur-xl">
+                    <div className="mt-6 rounded-lg border border-white/10 bg-slate-950/35 p-2 shadow-2xl shadow-black/30 backdrop-blur-xl">
                         <a
                             href="/api/auth/login"
                             className="group flex w-full items-center justify-center gap-3 rounded-lg bg-[#5865F2] px-8 py-4 font-bold text-white shadow-lg shadow-[#5865F2]/25 transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#6672ff] hover:shadow-[#5865F2]/35 active:translate-y-0"
