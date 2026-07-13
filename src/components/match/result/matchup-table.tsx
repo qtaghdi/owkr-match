@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Ban, Star, MicOff } from 'lucide-react';
 import { formatRank } from '../../../constants';
-import { MatchResultData, Role, Player } from '../../../types';
+import type { MatchResultData, Player, Role, SwapSource } from '../../../types';
 import { DamageIcon, SupportIcon, TankIcon } from '../../roles/icon';
 import { getTierImage } from '../../../utils/tier';
-import { SwapSource } from './team-card';
 import PlayerTooltip from './player-tooltip';
+import { PlayerIdentity } from '../../player/player-identity';
 
 interface MatchupTableProps {
     matchResult: MatchResultData;
@@ -67,7 +67,7 @@ const MatchupTable = ({ matchResult, onSlotClick, swapSource }: MatchupTableProp
             </div>
 
             {/* 맞대결 행 */}
-            {rows.map((row, rowIdx) => {
+            {rows.map((row) => {
                 const rankA = getRankInfo(row.playerA, row.role);
                 const rankB = getRankInfo(row.playerB, row.role);
                 const tierImgA = getTierImage(rankA.tier);
@@ -87,14 +87,17 @@ const MatchupTable = ({ matchResult, onSlotClick, swapSource }: MatchupTableProp
                             className="flex-1 relative min-w-0"
                             onMouseEnter={() => setHoveredSlot(slotKeyA)}
                             onMouseLeave={() => setHoveredSlot(null)}
+                            onFocus={() => setHoveredSlot(slotKeyA)}
+                            onBlur={() => setHoveredSlot(null)}
                         >
                             <button
                                 onClick={() => onSlotClick(0, row.role, row.arrayIndex)}
+                                aria-label={`${row.playerA.discordName ?? row.playerA.name} 교체 슬롯 선택`}
                                 className={`w-full flex items-center justify-end gap-2 px-4 py-3 rounded-l-lg transition-colors text-right min-w-0 ${
                                     selA ? 'bg-blue-900/40 ring-1 ring-inset ring-blue-500' : 'hover:bg-slate-800/70'
                                 }`}
                             >
-                                <span className="text-[15px] font-semibold text-slate-100 truncate">{row.playerA.name}</span>
+                                <PlayerIdentity player={row.playerA} align="right" />
                                 {rankA.isPreferred && <Star size={12} className="text-yellow-400 fill-yellow-400 shrink-0" />}
                                 {rankA.isAvoided && <Ban size={12} className="text-rose-400 shrink-0" />}
                                 {row.playerA.noMic && <MicOff size={12} className="text-red-400 shrink-0" />}
@@ -121,9 +124,12 @@ const MatchupTable = ({ matchResult, onSlotClick, swapSource }: MatchupTableProp
                             className="flex-1 relative min-w-0"
                             onMouseEnter={() => setHoveredSlot(slotKeyB)}
                             onMouseLeave={() => setHoveredSlot(null)}
+                            onFocus={() => setHoveredSlot(slotKeyB)}
+                            onBlur={() => setHoveredSlot(null)}
                         >
                             <button
                                 onClick={() => onSlotClick(1, row.role, row.arrayIndex)}
+                                aria-label={`${row.playerB.discordName ?? row.playerB.name} 교체 슬롯 선택`}
                                 className={`w-full flex items-center gap-2 px-4 py-3 rounded-r-lg transition-colors text-left min-w-0 ${
                                     selB ? 'bg-red-900/30 ring-1 ring-inset ring-red-500' : 'hover:bg-slate-800/70'
                                 }`}
@@ -140,7 +146,7 @@ const MatchupTable = ({ matchResult, onSlotClick, swapSource }: MatchupTableProp
                                 {row.playerB.noMic && <MicOff size={12} className="text-red-400 shrink-0" />}
                                 {rankB.isAvoided && <Ban size={12} className="text-rose-400 shrink-0" />}
                                 {rankB.isPreferred && <Star size={12} className="text-yellow-400 fill-yellow-400 shrink-0" />}
-                                <span className="text-[15px] font-semibold text-slate-100 truncate">{row.playerB.name}</span>
+                                <PlayerIdentity player={row.playerB} />
                             </button>
                             <PlayerTooltip player={row.playerB} visible={hoveredSlot === slotKeyB} alignRight />
                         </div>

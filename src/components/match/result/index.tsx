@@ -1,8 +1,7 @@
-import React, { useRef } from 'react';
-import { MatchResultData, Role } from '../../../types';
+import { useRef } from 'react';
+import type { MatchResultData, Role, SwapSource } from '../../../types';
 import { CUSTOM_GAME_CODE } from '../../../constants';
 import { useCopyImage } from '../../../hooks/use-copy-image';
-import { SwapSource } from './team-card';
 import MatchupTable from './matchup-table';
 import CopyButton from './copy-button';
 

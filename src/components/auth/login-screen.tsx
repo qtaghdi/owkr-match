@@ -1,5 +1,3 @@
-import React, { useMemo } from 'react';
-
 const BACKGROUND_IMAGES = [
     '/background/kiriko.jpg',
     '/background/le-sserafim.jpg',
@@ -7,17 +5,14 @@ const BACKGROUND_IMAGES = [
     '/background/sion.jpg',
 ] as const;
 
-const LoginScreen = () => {
-    const backgroundImage = useMemo(
-        () => BACKGROUND_IMAGES[Math.floor(Math.random() * BACKGROUND_IMAGES.length)],
-        [],
-    );
+const BACKGROUND_IMAGE = BACKGROUND_IMAGES[Math.floor(Math.random() * BACKGROUND_IMAGES.length)];
 
+const LoginScreen = () => {
     return (
         <div className="login-scene relative min-h-screen overflow-hidden bg-[#080a0f] text-white">
             <div
                 className="login-background"
-                style={{ backgroundImage: `url(${backgroundImage})` }}
+                style={{ backgroundImage: `url(${BACKGROUND_IMAGE})` }}
             />
             <div className="login-ambient login-ambient-a" />
             <div className="login-ambient login-ambient-b" />

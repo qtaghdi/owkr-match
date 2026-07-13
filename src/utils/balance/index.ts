@@ -1,0 +1,319 @@
+import type {
+    BalanceMetrics,
+    MatchResultData,
+    Player,
+    Rank,
+    Role,
+    RoleAssignment,
+    TeamResult,
+} from '../../types';
+
+const TEAM_SIZE = 5;
+const PLAYER_COUNT = 10;
+const MAX_CANDIDATES = 5;
+const ROLES: Role[] = ['TANK', 'DPS', 'SUPPORT'];
+
+const SCORE_WEIGHTS = {
+    roleMatchup: 3,
+    teamVariance: 0.5,
+    micImbalance: 200,
+} as const;
+
+interface RoleScores {
+    tank: number;
+    dps: number;
+    support: number;
+}
+
+interface AssignmentResult {
+    assignment: RoleAssignment;
+    realScore: number;
+    preferenceViolations: number;
+    avoidedAssignments: number;
+    unrankedAssignments: number;
+    teamStdDev: number;
+    roleScores: RoleScores;
+}
+
+interface Candidate {
+    teamA: AssignmentResult;
+    teamB: AssignmentResult;
+    preferenceViolations: number;
+    avoidedAssignments: number;
+    unrankedAssignments: number;
+    compositeScore: number;
+    realDiff: number;
+}
+
+/**
+ * @description 순수 밸런싱 계산이 반환하는 최종 결과와 대안 목록.
+ */
+export interface BalanceResult {
+    result: MatchResultData;
+    alternatives: MatchResultData[];
+}
+
+/**
+ * @description 밸런싱 워커가 반환하는 성공 또는 실패 메시지.
+ */
+export type BalanceWorkerResponse =
+    | { ok: true; data: BalanceResult }
+    | { ok: false; error: string };
+
+/**
+ * @description 플레이어의 지정 역할 랭크를 반환한다.
+ */
+const getRank = (player: Player, role: Role): Rank => {
+    if (role === 'TANK') return player.tank;
+    if (role === 'DPS') return player.dps;
+    return player.sup;
+};
+
+/**
+ * @description 역할 배치 목록을 플레이어와 담당 역할 쌍으로 평탄화한다.
+ */
+const getAssignedPlayers = (assignment: RoleAssignment): Array<[Player, Role]> => [
+    [assignment.TANK[0], 'TANK'],
+    ...assignment.DPS.map((player): [Player, Role] => [player, 'DPS']),
+    ...assignment.SUPPORT.map((player): [Player, Role] => [player, 'SUPPORT']),
+];
+
+/**
+ * @description 숫자 목록의 표준편차를 계산한다.
+ */
+const calculateStdDev = (scores: number[]): number => {
+    const mean = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+    const variance = scores.reduce((sum, score) => sum + (score - mean) ** 2, 0) / scores.length;
+    return Math.sqrt(variance);
+};
+
+/**
+ * @description 역할 배치에서 반복 사용되는 품질 지표를 한 번만 계산한다.
+ */
+const buildAssignmentResult = (assignment: RoleAssignment): AssignmentResult => {
+    const assignedPlayers = getAssignedPlayers(assignment);
+    const scores = assignedPlayers.map(([player, role]) => getRank(player, role).score);
+
+    let preferenceViolations = 0;
+    let avoidedAssignments = 0;
+    let unrankedAssignments = 0;
+
+    for (const [player, role] of assignedPlayers) {
+        const assignedRank = getRank(player, role);
+        const hasPreferredRole = ROLES.some((candidateRole) => getRank(player, candidateRole).isPreferred);
+
+        if (hasPreferredRole && !assignedRank.isPreferred) preferenceViolations++;
+        if (assignedRank.isAvoided) avoidedAssignments++;
+        if (assignedRank.tier === 'UNRANKED' || assignedRank.score === 0) unrankedAssignments++;
+    }
+
+    const tankScore = scores[0];
+    const dpsScore = (scores[1] + scores[2]) / 2;
+    const supportScore = (scores[3] + scores[4]) / 2;
+
+    return {
+        assignment,
+        realScore: scores.reduce((sum, score) => sum + score, 0),
+        preferenceViolations,
+        avoidedAssignments,
+        unrankedAssignments,
+        teamStdDev: calculateStdDev(scores),
+        roleScores: {
+            tank: tankScore,
+            dps: dpsScore,
+            support: supportScore,
+        },
+    };
+};
+
+/**
+ * @description 5인 팀에서 가능한 1탱커·2딜러·2힐러 역할 배치를 생성한다.
+ */
+const getAllTeamAssignments = (players: Player[]): AssignmentResult[] => {
+    const results: AssignmentResult[] = [];
+
+    for (let tankIndex = 0; tankIndex < TEAM_SIZE; tankIndex++) {
+        const remainingIndexes = [0, 1, 2, 3, 4].filter((index) => index !== tankIndex);
+
+        for (let first = 0; first < remainingIndexes.length; first++) {
+            for (let second = first + 1; second < remainingIndexes.length; second++) {
+                const firstDpsIndex = remainingIndexes[first];
+                const secondDpsIndex = remainingIndexes[second];
+                const supportIndexes = remainingIndexes.filter(
+                    (index) => index !== firstDpsIndex && index !== secondDpsIndex,
+                );
+
+                results.push(buildAssignmentResult({
+                    TANK: [players[tankIndex]],
+                    DPS: [players[firstDpsIndex], players[secondDpsIndex]],
+                    SUPPORT: [players[supportIndexes[0]], players[supportIndexes[1]]],
+                }));
+            }
+        }
+    }
+
+    return results;
+};
+
+/**
+ * @description 두 팀 역할별 평균 점수 차이의 합을 계산한다.
+ */
+const calculateRoleMatchupDiff = (teamA: AssignmentResult, teamB: AssignmentResult): number =>
+    Math.abs(teamA.roleScores.tank - teamB.roleScores.tank)
+    + Math.abs(teamA.roleScores.dps - teamB.roleScores.dps)
+    + Math.abs(teamA.roleScores.support - teamB.roleScores.support);
+
+/**
+ * @description 두 팀의 마이크 미사용 인원 차이를 계산한다.
+ */
+const calculateMicImbalance = (teamA: Player[], teamB: Player[]): number => {
+    const noMicA = teamA.filter((player) => player.noMic).length;
+    const noMicB = teamB.filter((player) => player.noMic).length;
+    return Math.abs(noMicA - noMicB);
+};
+
+/**
+ * @description 후보 우선순위를 선호·비선호·미배치·종합 점수 순으로 비교한다.
+ */
+const compareCandidates = (candidate: Candidate, existing: Candidate): number =>
+    candidate.preferenceViolations - existing.preferenceViolations
+    || candidate.avoidedAssignments - existing.avoidedAssignments
+    || candidate.unrankedAssignments - existing.unrankedAssignments
+    || candidate.compositeScore - existing.compositeScore
+    || candidate.realDiff - existing.realDiff;
+
+/**
+ * @description 정렬된 상위 후보 목록에 새 후보를 삽입한다.
+ */
+const insertCandidate = (candidates: Candidate[], candidate: Candidate): void => {
+    const insertAt = candidates.findIndex((existing) => compareCandidates(candidate, existing) < 0);
+    candidates.splice(insertAt === -1 ? candidates.length : insertAt, 0, candidate);
+    if (candidates.length > MAX_CANDIDATES) candidates.pop();
+};
+
+/**
+ * @description 역할별 점수 차이와 팀 내부 편차를 UI 지표로 변환한다.
+ */
+const buildMetrics = (teamA: AssignmentResult, teamB: AssignmentResult): BalanceMetrics => ({
+    totalDiff: Math.abs(teamA.realScore - teamB.realScore),
+    roleDiffs: {
+        tank: Math.round(Math.abs(teamA.roleScores.tank - teamB.roleScores.tank)),
+        dps: Math.round(Math.abs(teamA.roleScores.dps - teamB.roleScores.dps)),
+        support: Math.round(Math.abs(teamA.roleScores.support - teamB.roleScores.support)),
+    },
+    teamStdDevs: [Math.round(teamA.teamStdDev), Math.round(teamB.teamStdDev)],
+});
+
+/**
+ * @description 내부 후보를 화면과 저장소에서 사용하는 매칭 결과로 변환한다.
+ */
+const toMatchResult = (candidate: Candidate): MatchResultData => {
+    const teamA: TeamResult = {
+        name: 'TEAM 1',
+        assignment: candidate.teamA.assignment,
+        realScore: candidate.teamA.realScore,
+    };
+    const teamB: TeamResult = {
+        name: 'TEAM 2',
+        assignment: candidate.teamB.assignment,
+        realScore: candidate.teamB.realScore,
+    };
+
+    return {
+        teamA,
+        teamB,
+        diff: candidate.realDiff,
+        metrics: buildMetrics(candidate.teamA, candidate.teamB),
+    };
+};
+
+/**
+ * @description 수동 교체 이후 팀 점수와 품질 지표를 현재 역할 배치에 맞게 다시 계산한다.
+ */
+export const recalculateMatchResult = (matchResult: MatchResultData): MatchResultData => {
+    const teamAResult = buildAssignmentResult(matchResult.teamA.assignment);
+    const teamBResult = buildAssignmentResult(matchResult.teamB.assignment);
+
+    return {
+        teamA: {
+            ...matchResult.teamA,
+            realScore: teamAResult.realScore,
+        },
+        teamB: {
+            ...matchResult.teamB,
+            realScore: teamBResult.realScore,
+        },
+        diff: Math.abs(teamAResult.realScore - teamBResult.realScore),
+        metrics: buildMetrics(teamAResult, teamBResult),
+    };
+};
+
+/**
+ * @description 10명을 가능한 모든 팀과 역할 조합으로 평가해 최적 결과를 반환한다.
+ */
+export const balancePlayers = (players: Player[]): BalanceResult => {
+    if (players.length !== PLAYER_COUNT) {
+        throw new Error(`플레이어가 ${PLAYER_COUNT}명이어야 합니다. (현재: ${players.length}명)`);
+    }
+
+    const combinations: number[] = [];
+    const generateCombinations = (start: number, count: number, mask: number): void => {
+        if (count === 0) {
+            combinations.push(mask);
+            return;
+        }
+
+        for (let index = start; index <= PLAYER_COUNT - count; index++) {
+            generateCombinations(index + 1, count - 1, mask | (1 << index));
+        }
+    };
+
+    generateCombinations(1, TEAM_SIZE - 1, 1);
+
+    const topCandidates: Candidate[] = [];
+    const allPlayersMask = (1 << PLAYER_COUNT) - 1;
+
+    for (const teamAMask of combinations) {
+        const teamBMask = allPlayersMask ^ teamAMask;
+        const teamAPlayers: Player[] = [];
+        const teamBPlayers: Player[] = [];
+
+        for (let index = 0; index < PLAYER_COUNT; index++) {
+            if ((teamAMask >> index) & 1) teamAPlayers.push(players[index]);
+            else if ((teamBMask >> index) & 1) teamBPlayers.push(players[index]);
+        }
+
+        const micImbalance = calculateMicImbalance(teamAPlayers, teamBPlayers);
+        const teamAAssignments = getAllTeamAssignments(teamAPlayers);
+        const teamBAssignments = getAllTeamAssignments(teamBPlayers);
+
+        for (const teamA of teamAAssignments) {
+            for (const teamB of teamBAssignments) {
+                const realDiff = Math.abs(teamA.realScore - teamB.realScore);
+                const roleMatchupDiff = calculateRoleMatchupDiff(teamA, teamB);
+                const teamVariance = teamA.teamStdDev + teamB.teamStdDev;
+
+                insertCandidate(topCandidates, {
+                    teamA,
+                    teamB,
+                    preferenceViolations: teamA.preferenceViolations + teamB.preferenceViolations,
+                    avoidedAssignments: teamA.avoidedAssignments + teamB.avoidedAssignments,
+                    unrankedAssignments: teamA.unrankedAssignments + teamB.unrankedAssignments,
+                    compositeScore: realDiff
+                        + roleMatchupDiff * SCORE_WEIGHTS.roleMatchup
+                        + teamVariance * SCORE_WEIGHTS.teamVariance
+                        + micImbalance * SCORE_WEIGHTS.micImbalance,
+                    realDiff,
+                });
+            }
+        }
+    }
+
+    const [bestCandidate, ...alternativeCandidates] = topCandidates;
+    if (!bestCandidate) throw new Error('유효한 팀 조합을 찾지 못했습니다.');
+
+    return {
+        result: toMatchResult(bestCandidate),
+        alternatives: alternativeCandidates.map(toMatchResult),
+    };
+};

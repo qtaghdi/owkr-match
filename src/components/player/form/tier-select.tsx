@@ -13,7 +13,7 @@ interface TierSelectProps {
         dTier: string; dDiv: string; dPref: boolean; dAvoid: boolean;
         sTier: string; sDiv: string; sPref: boolean; sAvoid: boolean;
     };
-    setInputs: React.Dispatch<React.SetStateAction<TierSelectProps['inputs'] & { name: string }>>;
+    setInputs: React.Dispatch<React.SetStateAction<TierSelectProps['inputs'] & { name: string; discordName: string }>>;
 }
 
 const TierSelect = ({ prefix, label, prefKey, avoidKey, inputs, setInputs }: TierSelectProps) => {

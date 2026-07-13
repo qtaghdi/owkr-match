@@ -8,12 +8,14 @@
     "dev:api": "vercel dev",
     "build": "vite build",
     "lint": "eslint .",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm run lint && npm run test && npm run build",
     "preview": "vite preview"
   },
   "dependencies": {
     "@vercel/analytics": "^1.6.1",
     "@vercel/node": "^5.5.22",
-    "clsx": "^2.1.1",
     "cookie": "^1.1.1",
     "framer-motion": "^12.26.2",
     "html-to-image": "^1.11.13",
@@ -21,7 +23,6 @@
     "lucide-react": "^0.562.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "tailwind-merge": "^3.4.0",
     "vercel": "^54.21.1"
   },
   "devDependencies": {
@@ -40,7 +41,9 @@
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.9.3",
-    "vite": "npm:rolldown-vite@7.2.5"
+    "typescript-eslint": "^8.63.0",
+    "vite": "npm:rolldown-vite@7.2.5",
+    "vitest": "^4.1.10"
   },
   "overrides": {
     "vite": "npm:rolldown-vite@7.2.5"

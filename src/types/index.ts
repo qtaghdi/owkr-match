@@ -37,6 +37,7 @@ export interface Rank {
  * @description 파싱/입력 → 팀 배치 흐름에서 사용하는 플레이어 모델.
  * @property id - 고유 식별자 (타임스탬프 + 랜덤)
  * @property name - 배틀태그 (닉네임#숫자)
+ * @property discordName - 디스코드에서 사용하는 표시 이름
  * @property tank - 탱커 역할 랭크
  * @property dps - 딜러 역할 랭크
  * @property sup - 힐러 역할 랭크
@@ -45,6 +46,7 @@ export interface Rank {
 export interface Player {
     id: number;
     name: string;
+    discordName?: string;
     tank: Rank;
     dps: Rank;
     sup: Rank;
@@ -67,14 +69,21 @@ export interface RoleAssignment {
  * @description 한 팀의 배치와 점수를 담는 결과 모델.
  * @property name - 팀 이름 (TEAM 1, TEAM 2)
  * @property assignment - 역할별 플레이어 배치
- * @property algoScore - 알고리즘 점수 (선호도 보너스/페널티 포함)
  * @property realScore - 실제 점수 (순수 티어 기반)
  */
 export interface TeamResult {
     name: string;
     assignment: RoleAssignment;
-    algoScore: number;
     realScore: number;
+}
+
+/**
+ * @description 결과 화면에서 선택된 교체 슬롯을 식별한다.
+ */
+export interface SwapSource {
+    teamIdx: number;
+    role: Role;
+    index: number;
 }
 
 /**

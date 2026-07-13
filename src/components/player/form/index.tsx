@@ -5,6 +5,7 @@ import TierSelect from './tier-select';
 interface PlayerFormProps {
     inputs: {
         name: string;
+        discordName: string;
         tTier: string; tDiv: string; tPref: boolean; tAvoid: boolean;
         dTier: string; dDiv: string; dPref: boolean; dAvoid: boolean;
         sTier: string; sDiv: string; sPref: boolean; sAvoid: boolean;
@@ -103,6 +104,15 @@ const PlayerForm = ({ inputs, setInputs, addPlayer, pasteText, setPasteText, han
                             value={inputs.name}
                             onChange={(e) => setInputs(prev => ({ ...prev, name: e.target.value }))}
                             onKeyDown={(e) => e.key === 'Enter' && addPlayer()}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-slate-400 mb-2">디스코드 닉네임 (선택)</label>
+                        <input
+                            placeholder="서버에서 사용하는 닉네임"
+                            className="input-base"
+                            value={inputs.discordName}
+                            onChange={(e) => setInputs(prev => ({ ...prev, discordName: e.target.value }))}
                         />
                     </div>
 

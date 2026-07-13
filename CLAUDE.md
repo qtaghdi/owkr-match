@@ -24,10 +24,12 @@ src/
 │   └── roles/icon/     # Role icons
 ├── hooks/
 │   ├── use-auth.ts     # Discord auth state
-│   └── use-balance.ts  # Core balancing algorithm
+│   └── use-balance.ts  # Balance worker state
 ├── types/              # TypeScript interfaces
 ├── constants/          # Tier definitions, scoring
-└── utils/parser/       # Discord chat log parsing
+└── utils/
+    ├── balance/        # Core balancing algorithm
+    └── parser/         # Discord chat log parsing
 
 api/auth/               # Vercel serverless routes
 ├── login.ts            # Discord OAuth redirect
@@ -55,7 +57,7 @@ score = (tierIndex * 600) + ((6 - division) * 100)
 ### Role System
 - Roles: `TANK`, `DPS`, `SUPPORT`
 - Use `!` suffix for preferred role (e.g., `다이아3!`)
-- Algorithm adds +100M bonus for preferred role assignment
+- Algorithm prioritizes preferred-role violations, avoided roles, unranked roles, then score balance
 
 ### Player Input Formats
 ```
@@ -85,7 +87,8 @@ PlayerName#1234 다3! 플2 골1         # ! = preferred
 
 ## Important Files
 
-- `src/hooks/use-balance.ts` - Core balancing algorithm (most complex logic)
+- `src/utils/balance/index.ts` - Core balancing algorithm (most complex logic)
+- `src/hooks/use-balance.ts` - Balance Web Worker lifecycle
 - `src/utils/parser/index.ts` - Player input parsing
 - `src/App.tsx` - Main component orchestrating state
 - `src/constants/index.ts` - Tier definitions, scoring formula

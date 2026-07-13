@@ -1,10 +1,10 @@
-import React from 'react';
 import { Trash2, Users, AlertCircle, MicOff, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Player } from '../../../types';
+import type { Player } from '../../../types';
 import { DamageIcon, SupportIcon, TankIcon } from '../../roles/icon';
 import { formatRank } from '../../../constants';
 import RankBadge from './rank-badge';
+import { PlayerIdentity } from '../player-identity';
 
 interface PlayerListProps {
     participants: Player[];
@@ -33,8 +33,8 @@ const PlayerList = ({ participants, waitlist, onRemovePlayer, onClearAll }: Play
             }`}
         >
             <div className="min-w-0 flex-1">
-                <div className="font-medium text-sm text-slate-200 truncate flex items-center gap-1.5">
-                    {p.name}
+                <div className="flex min-w-0 items-center gap-1.5">
+                    <PlayerIdentity player={p} />
                     {p.noMic && <MicOff size={12} className="text-red-400 flex-shrink-0" />}
                 </div>
                 <div className="flex items-center gap-3 mt-1.5">
@@ -58,7 +58,7 @@ const PlayerList = ({ participants, waitlist, onRemovePlayer, onClearAll }: Play
             <button
                 onClick={() => onRemovePlayer(p.id)}
                 className="ml-2 p-2 rounded-lg text-slate-500 hover:text-danger hover:bg-danger-subtle opacity-70 group-hover:opacity-100 transition-all"
-                aria-label="삭제"
+                aria-label={`${p.discordName ?? p.name} 삭제`}
             >
                 <Trash2 size={16} />
             </button>

@@ -1,4 +1,5 @@
-import { useState, useCallback, RefObject } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { RefObject } from 'react';
 import { toPng } from 'html-to-image';
 
 type CopyStatus = 'idle' | 'loading' | 'success' | 'error';
@@ -10,6 +11,16 @@ type CopyStatus = 'idle' | 'loading' | 'success' | 'error';
  */
 export const useCopyImage = (ref: RefObject<HTMLDivElement | null>) => {
     const [copyStatus, setCopyStatus] = useState<CopyStatus>('idle');
+    const resetTimerRef = useRef<number | null>(null);
+
+    useEffect(() => () => {
+        if (resetTimerRef.current) window.clearTimeout(resetTimerRef.current);
+    }, []);
+
+    const resetStatusLater = useCallback((): void => {
+        if (resetTimerRef.current) window.clearTimeout(resetTimerRef.current);
+        resetTimerRef.current = window.setTimeout(() => setCopyStatus('idle'), 2000);
+    }, []);
 
     const handleCopyImage = useCallback(async () => {
         if (!ref.current) return;
@@ -25,18 +36,16 @@ export const useCopyImage = (ref: RefObject<HTMLDivElement | null>) => {
 
             const response = await fetch(dataUrl);
             const blob = await response.blob();
-
-            const item = new ClipboardItem({ 'image/png': blob });
-            await navigator.clipboard.write([item]);
+            await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
 
             setCopyStatus('success');
-            setTimeout(() => setCopyStatus('idle'), 2000);
         } catch (error) {
             console.error(error);
             setCopyStatus('error');
-            setTimeout(() => setCopyStatus('idle'), 2000);
+        } finally {
+            resetStatusLater();
         }
-    }, [ref]);
+    }, [ref, resetStatusLater]);
 
     return { copyStatus, handleCopyImage };
 };

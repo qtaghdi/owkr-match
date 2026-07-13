@@ -1,5 +1,5 @@
-import { Player, Rank, Role } from "src/types";
-import { TIERS, TIER_LABEL_MAP, getScore } from "src/constants";
+import type { Player, Rank, Role } from 'src/types';
+import { TIERS, getScore } from 'src/constants';
 
 /**
  * @description 티어 문자열을 정규화해 TIERS 인덱스로 매핑한다.
@@ -69,19 +69,24 @@ const parseRole = (roleStr: string): 'TANK' | 'DPS' | 'SUPPORT' | null => {
 };
 
 /**
- * @description 괄호 안 티어 표기를 추출해 예상 티어로 해석한다.
- * @param text - 괄호를 포함한 텍스트
- * @returns 예상 티어 문자열 또는 null
+ * @description 설명이 섞인 문자열에서 처음 발견되는 유효 티어와 등급을 찾는다.
+ * @param text - 티어 후보가 포함된 문자열
+ * @returns 티어 인덱스와 등급 또는 null
  */
-const extractEstimatedTier = (text: string): string | null => {
-    const match = text.match(/\(([가-힣a-zA-Z]+)\)/);
-    if (!match) return null;
+const findRankToken = (text: string): { tierIdx: number; div: number } | null => {
+    const matches = text.matchAll(/([가-힣a-zA-Z]+)\s*([1-5])?/g);
 
-    const inner = match[1];
-    // "배치", "배치중", "예상" 등은 무시
-    if (inner.match(/배치|예상|중/)) return null;
+    for (const match of matches) {
+        const tierIdx = findTierIndex(match[1]);
+        if (tierIdx !== -1) {
+            return {
+                tierIdx,
+                div: match[2] ? Number.parseInt(match[2], 10) : 3,
+            };
+        }
+    }
 
-    return inner;
+    return null;
 };
 
 /**
@@ -94,33 +99,25 @@ const parseRankSegment = (segment: string): { tierIdx: number; div: number; isPr
     const isAvoided = segment.includes('?');
     const cleanSegment = segment.replace(/[!?]/g, '').trim();
 
-    // "미배치(골)" 같은 패턴 처리
+    // "미배치(골)"은 예상 티어로, "미배치(복귀)"는 미배치 그대로 처리
     if (cleanSegment.match(/미배치|unranked/i)) {
-        const estimated = extractEstimatedTier(cleanSegment);
-        if (estimated) {
-            const tierIdx = findTierIndex(estimated);
-            if (tierIdx !== -1) {
-                return { tierIdx, div: 3, isPreferred, isAvoided }; // 예상 티어는 기본 3등급
-            }
+        const parentheticalText = cleanSegment.match(/\(([^)]*)\)/)?.[1] ?? '';
+        const estimatedRank = findRankToken(parentheticalText);
+        if (estimatedRank) {
+            return { ...estimatedRank, isPreferred, isAvoided };
         }
-        return null; // 완전히 미배치
+        return { tierIdx: -1, div: 0, isPreferred, isAvoided };
     }
 
-    // "(예상)", "(예상 티어)", "(배치중)", "(배치 중)" 패턴 제거
-    const withoutEstimate = cleanSegment
-        .replace(/\(\s*예상[^)]*\)/g, '')
-        .replace(/\(\s*배치\s*중\s*\)/g, '')
+    // 예상 티어는 보존하고 영웅, 복귀, 마이크 같은 부가 설명은 제거한다.
+    const withoutNotes = cleanSegment
+        .replace(/\(\s*예상\s*([^)]*)\)/gi, ' $1 ')
+        .replace(/\([^)]*\)/g, ' ')
+        .replace(/예상/gi, ' ')
         .trim();
 
-    // 일반 패턴: "다이아3", "다3", "플레4", "마1" 등
-    const tierDivMatch = withoutEstimate.match(/^([가-힣a-zA-Z]+)\s*(\d)?$/);
-    if (tierDivMatch) {
-        const tierIdx = findTierIndex(tierDivMatch[1]);
-        const div = tierDivMatch[2] ? parseInt(tierDivMatch[2]) : 3;
-        if (tierIdx !== -1) {
-            return { tierIdx, div, isPreferred, isAvoided };
-        }
-    }
+    const rankToken = findRankToken(withoutNotes);
+    if (rankToken) return { ...rankToken, isPreferred, isAvoided };
 
     return null;
 };
@@ -134,7 +131,7 @@ const parseRankSegment = (segment: string): { tierIdx: number; div: number; isPr
  */
 const createRank = (tierIdx: number, div: number, isPreferred: boolean, isAvoided: boolean): Rank => {
     if (tierIdx === -1) {
-        return { tier: 'UNRANKED', div: 0, score: 0, isPreferred: false, isAvoided: false };
+        return { tier: 'UNRANKED', div: 0, score: 0, isPreferred, isAvoided };
     }
     return {
         tier: TIERS[tierIdx],
@@ -218,11 +215,11 @@ const extractEmojiInfo = (text: string): { cleanText: string; emojiRoles: ('TANK
  * @param line - 파싱할 한 줄의 텍스트
  * @returns Player 객체 또는 파싱 실패 시 null
  */
-export const parseLineToPlayer = (line: string): Player | null => {
-    // 끝에 있는 "X" 또는 "O" 표시 확인 (마이크 사용 여부)
+export const parseLineToPlayer = (line: string, discordName?: string): Player | null => {
+    // "마이크x" 또는 설명 앞의 독립된 X 표기를 마이크 미사용으로 처리한다.
     const trimmedLine = line.trim();
-    const noMicMatch = trimmedLine.match(/\s+([XO])$/i);
-    const noMic = noMicMatch ? noMicMatch[1].toUpperCase() === 'X' : false;
+    const noMic = /마이크\s*[:：]?\s*x/i.test(trimmedLine)
+        || /(?:^|\s)x(?=\s|$|\()/i.test(trimmedLine);
     const cleanLine = trimmedLine.replace(/\s+[XO]$/i, '').trim();
 
     // 닉네임#태그 추출 (공백 허용)
@@ -253,7 +250,7 @@ export const parseLineToPlayer = (line: string): Player | null => {
         let roleIndex = 0; // 0: TANK, 1: DPS, 2: SUPPORT
 
         for (let i = 0; i < slashParts.length; i++) {
-            let part = slashParts[i];
+            const part = slashParts[i];
 
             // 역할이 명시되어 있는지 확인 (예: "탱 실3", "딜 브1", "힐 골3", "탱! 실3")
             const roleMatch = part.match(/^[!?]?(탱(?:커)?|딜(?:러)?|힐(?:러)?|t|d|s)[!?]?\s*/i);
@@ -272,11 +269,7 @@ export const parseLineToPlayer = (line: string): Player | null => {
                 currentRole = emojiRoles[i];
             }
 
-            // "(배치 중)", "(배치중)", "(예상)" 제거
-            rankPart = rankPart
-                .replace(/\(\s*배치\s*중\s*\)/g, '')
-                .replace(/\(\s*예상[^)]*\)/g, '')
-                .trim();
+            rankPart = rankPart.trim();
 
             // "!" 처리 - 역할 매칭 없어도 ! 있으면 선호
             if (!isRolePreferred && part.includes('!')) isRolePreferred = true;
@@ -397,6 +390,7 @@ export const parseLineToPlayer = (line: string): Player | null => {
     return {
         id: Date.now() + Math.random(),
         name,
+        discordName: discordName?.trim() || undefined,
         tank,
         dps,
         sup,
@@ -439,6 +433,31 @@ const hasTierInfoOnly = (line: string): boolean => {
 };
 
 /**
+ * @description 디스코드 복사본의 메시지 헤더에서 작성자 표시 이름을 추출한다.
+ * @param line - 디스코드 메시지 헤더 후보
+ * @returns 작성자 표시 이름 또는 null
+ */
+const extractDiscordName = (line: string): string | null => {
+    const trimmed = line.trim();
+    if (!trimmed.includes('—')) return null;
+
+    const markdownName = trimmed.match(/^\*\*(.+?)\*\*/)?.[1]?.replace(/\\([_*~`])/g, '$1').trim();
+    if (markdownName) return markdownName;
+
+    if (trimmed.includes('역할 아이콘')) {
+        const accessibleName = trimmed
+            .split('역할 아이콘')[0]
+            .replace(/\*\*/g, '')
+            .replace(/\s*\[[^\]]+\],?\s*$/, '')
+            .trim();
+        return accessibleName || null;
+    }
+
+    const plainName = trimmed.split('—')[0].replace(/\*\*/g, '').trim();
+    return plainName || null;
+};
+
+/**
  * @description 파싱 결과 타입
  */
 export interface ParseResult {
@@ -456,15 +475,25 @@ export const parseMultipleLines = (text: string): ParseResult => {
     const players: Player[] = [];
     const failedLines: string[] = [];
     const seenNames = new Set<string>();
+    let pendingDiscordName: string | undefined;
 
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
+
+        const discordName = extractDiscordName(line);
+        if (discordName) {
+            pendingDiscordName = discordName;
+            continue;
+        }
 
         // 디스코드 메타데이터 라인 제외 (역할 아이콘, 시간 등)
         if (line.includes('역할 아이콘') || line.includes('—')) continue;
 
         // 닉네임#태그 패턴이 있는 줄 처리
         if (line.includes('#') && line.match(/\d{4,}/)) {
+            const playerDiscordName = pendingDiscordName;
+            pendingDiscordName = undefined;
+
             // 닉네임만 있는 줄인지 확인
             const nameOnly = extractNameOnly(line);
 
@@ -482,36 +511,39 @@ export const parseMultipleLines = (text: string): ParseResult => {
                 if (tierLines.length > 0) {
                     // 줄바꿈 입력은 역할 순서 보존을 위해 슬래시로 합친다.
                     const combinedLine = `${nameOnly} ${tierLines.join(' / ')}`;
-                    const player = parseLineToPlayer(combinedLine);
-                    if (player && !seenNames.has(player.name)) {
+                    const player = parseLineToPlayer(combinedLine, playerDiscordName);
+                    const normalizedName = player?.name.toLowerCase();
+                    if (player && normalizedName && !seenNames.has(normalizedName)) {
                         players.push(player);
-                        seenNames.add(player.name);
-                    } else if (!seenNames.has(nameOnly)) {
+                        seenNames.add(normalizedName);
+                    } else if (!seenNames.has(nameOnly.toLowerCase())) {
                         // 파싱 실패 - 닉네임만 추출해서 실패 목록에 추가
                         failedLines.push(nameOnly);
-                        seenNames.add(nameOnly);
+                        seenNames.add(nameOnly.toLowerCase());
                     }
                     i = j - 1; // 소비한 티어 줄만큼 스킵
                     continue;
-                } else if (!seenNames.has(nameOnly)) {
+                } else if (!seenNames.has(nameOnly.toLowerCase())) {
                     // 닉네임만 있고 다음 줄에 티어 정보 없음
                     failedLines.push(nameOnly);
-                    seenNames.add(nameOnly);
+                    seenNames.add(nameOnly.toLowerCase());
                     continue;
                 }
             }
 
             // 일반적인 한 줄 파싱
-            const player = parseLineToPlayer(line);
-            if (player && !seenNames.has(player.name)) {
+            const player = parseLineToPlayer(line, playerDiscordName);
+            const normalizedName = player?.name.toLowerCase();
+            if (player && normalizedName && !seenNames.has(normalizedName)) {
                 players.push(player);
-                seenNames.add(player.name);
+                seenNames.add(normalizedName);
             } else {
                 // 파싱 실패 - 닉네임 추출 시도
                 const nameMatch = line.match(/([^\s]+#\d{4,})/);
-                if (nameMatch && !seenNames.has(nameMatch[1])) {
-                    failedLines.push(nameMatch[1]);
-                    seenNames.add(nameMatch[1]);
+                const failedName = nameMatch?.[1];
+                if (failedName && !seenNames.has(failedName.toLowerCase())) {
+                    failedLines.push(failedName);
+                    seenNames.add(failedName.toLowerCase());
                 }
             }
         }

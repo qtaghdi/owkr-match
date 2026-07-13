@@ -1,11 +1,12 @@
-import React from 'react';
+import type { ReactNode } from 'react';
 import { Ban, Star } from 'lucide-react';
 import { formatRank } from '../../../constants';
-import { Player } from '../../../types';
+import type { Player } from '../../../types';
 import { DamageIcon, SupportIcon, TankIcon } from '../../roles/icon';
+import { PlayerIdentity } from '../../player/player-identity';
 
 interface TooltipRowProps {
-    icon: React.ReactNode;
+    icon: ReactNode;
     label: string;
     rank: Player['tank'];
 }
@@ -44,8 +45,8 @@ const PlayerTooltip = ({ player, visible, showAbove = false, alignRight = false 
 
     return (
         <div className={`absolute ${alignClass} ${positionClass} z-50 bg-surface-elevated border border-slate-700 rounded-lg p-3 shadow-xl min-w-[180px] animate-fade-in`}>
-            <div className="text-xs font-semibold text-slate-200 mb-2 pb-2 border-b border-slate-700">
-                {player.name}
+            <div className="mb-2 border-b border-slate-700 pb-2">
+                <PlayerIdentity player={player} />
             </div>
             <div className="space-y-1.5">
                 <TooltipRow

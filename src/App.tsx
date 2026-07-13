@@ -1,12 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Shuffle, RefreshCcw, Loader2, LogOut, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TIERS, getScore } from './constants';
 import { parseMultipleLines } from './utils/parser';
+import { recalculateMatchResult } from './utils/balance';
 import { setWithExpiry, getWithExpiry, removeItem, cleanupExpired } from './utils/storage';
 import { useBalance } from './hooks/use-balance';
 import { useAuth } from './hooks/use-auth';
-import { Player, Role, MatchResultData, Tier } from './types';
+import type { MatchResultData, Player, Role, SwapSource, Tier } from './types';
 import PlayerForm from './components/player/form';
 import PlayerList from './components/player/list';
 import MatchResult from './components/match/result';
@@ -62,13 +63,14 @@ const App = () => {
 
     const [inputs, setInputs] = useState({
         name: '',
+        discordName: '',
         tTier: 'DIAMOND', tDiv: '3', tPref: false, tAvoid: false,
         dTier: 'DIAMOND', dDiv: '3', dPref: false, dAvoid: false,
         sTier: 'PLATINUM', sDiv: '3', sPref: false, sAvoid: false
     });
     const [pasteText, setPasteText] = useState('');
     const [failedParses, setFailedParses] = useState<string[]>([]);
-    const [swapSource, setSwapSource] = useState<{ teamIdx: number, role: Role, index: number } | null>(null);
+    const [swapSource, setSwapSource] = useState<SwapSource | null>(null);
     const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
     const toastTimerRef = useRef<number | null>(null);
 
@@ -101,6 +103,7 @@ const App = () => {
         const newPlayer: Player = {
             id: Date.now(),
             name: inputs.name.trim(),
+            discordName: inputs.discordName.trim() || undefined,
             tank: { tier: tTier, div: inputs.tDiv, score: getScore(TIERS.indexOf(tTier), inputs.tDiv), isPreferred: inputs.tPref, isAvoided: inputs.tAvoid },
             dps: { tier: dTier, div: inputs.dDiv, score: getScore(TIERS.indexOf(dTier), inputs.dDiv), isPreferred: inputs.dPref, isAvoided: inputs.dAvoid },
             sup: { tier: sTier, div: inputs.sDiv, score: getScore(TIERS.indexOf(sTier), inputs.sDiv), isPreferred: inputs.sPref, isAvoided: inputs.sAvoid },
@@ -109,6 +112,7 @@ const App = () => {
         setInputs(prev => ({
             ...prev,
             name: '',
+            discordName: '',
             tPref: false,
             dPref: false,
             sPref: false,
@@ -161,7 +165,7 @@ const App = () => {
         setPasteText('');
     };
 
-    const handleRunMatching = () => {
+    const handleRunMatching = async () => {
         if (!isReady) {
             showToast('error', '팀을 짜려면 참가자 10명이 필요합니다.');
             return;
@@ -170,9 +174,10 @@ const App = () => {
         setAlternatives([]);
         const participants = players.slice(0, 10);
         try {
-            balanceTeams(participants);
-        } catch {
-            showToast('error', '매칭 중 오류가 발생했습니다.');
+            await balanceTeams(participants);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : '매칭 중 오류가 발생했습니다.';
+            showToast('error', message);
         }
     };
 
@@ -183,7 +188,7 @@ const App = () => {
                 setSwapSource(null);
                 return;
             }
-            const newResult = JSON.parse(JSON.stringify(result)) as MatchResultData;
+            const newResult = structuredClone(result);
             const teamNames: ('teamA' | 'teamB')[] = ['teamA', 'teamB'];
             const sourceTeam = teamNames[swapSource.teamIdx];
             const targetTeam = teamNames[teamIdx];
@@ -194,7 +199,7 @@ const App = () => {
             newResult[sourceTeam].assignment[swapSource.role][swapSource.index] = targetPlayer;
             newResult[targetTeam].assignment[role][idx] = sourcePlayer;
 
-            setResult(newResult);
+            setResult(recalculateMatchResult(newResult));
             setSwapSource(null);
             showToast('success', '포지션을 교체했습니다.');
         } else {
