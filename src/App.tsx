@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { TIERS, getScore } from './constants';
 import { parseMultipleLines } from './utils/parser';
 import { recalculateMatchResult } from './utils/balance';
+import { mergePlayersByBattleTag, syncMatchResultPlayerIdentities } from './utils/player';
 import { setWithExpiry, getWithExpiry, removeItem, cleanupExpired } from './utils/storage';
 import { useBalance } from './hooks/use-balance';
 import { useAuth } from './hooks/use-auth';
@@ -27,6 +28,7 @@ const App = () => {
     const [players, setPlayers] = useState<Player[]>(() => {
         return getWithExpiry<Player[]>(STORAGE_KEYS.PLAYERS) || [];
     });
+    const initialPlayersRef = useRef(players);
 
     const { balanceTeams, result, setResult, alternatives, setAlternatives, isBalancing } = useBalance();
 
@@ -38,7 +40,7 @@ const App = () => {
 
         const savedResult = getWithExpiry<MatchResultData>(STORAGE_KEYS.RESULT);
         if (savedResult) {
-            setResult(savedResult);
+            setResult(syncMatchResultPlayerIdentities(savedResult, initialPlayersRef.current));
         }
         isMounted.current = true;
     }, [setResult]);
@@ -129,38 +131,45 @@ const App = () => {
             return;
         }
         const { players: parsedPlayers, failedLines } = parseMultipleLines(pasteText);
-        const existingNames = new Set(players.map(player => normalizePlayerName(player.name)));
-        const seenNames = new Set(existingNames);
-        const uniquePlayers = parsedPlayers.filter(player => {
-            const normalizedName = normalizePlayerName(player.name);
-            if (seenNames.has(normalizedName)) return false;
-            seenNames.add(normalizedName);
-            return true;
-        });
-        const duplicateCount = parsedPlayers.length - uniquePlayers.length;
-        const waitlistCount = Math.max(players.length + uniquePlayers.length - 10, 0);
+        const merged = mergePlayersByBattleTag(players, parsedPlayers);
+        const waitlistCount = Math.max(merged.players.length - 10, 0);
 
-        if (uniquePlayers.length > 0) {
-            setPlayers(prev => [...prev, ...uniquePlayers]);
+        if (merged.addedCount > 0 || merged.updatedDiscordNameCount > 0) {
+            setPlayers(merged.players);
+        }
+        if (merged.updatedDiscordNameCount > 0) {
+            setResult(current => current
+                ? syncMatchResultPlayerIdentities(current, merged.players)
+                : null);
+            setAlternatives(current => current.map(alternative => (
+                syncMatchResultPlayerIdentities(alternative, merged.players)
+            )));
         }
         if (failedLines.length > 0) {
             setFailedParses(prev => [...prev, ...failedLines]);
         }
-        if (uniquePlayers.length === 0) {
-            if (duplicateCount > 0) {
+        const updateText = merged.updatedDiscordNameCount > 0
+            ? `, 디스코드 이름 ${merged.updatedDiscordNameCount}명 갱신`
+            : '';
+        const duplicateText = merged.unchangedDuplicateCount > 0
+            ? `, 중복 ${merged.unchangedDuplicateCount}명 제외`
+            : '';
+
+        if (merged.addedCount === 0 && merged.updatedDiscordNameCount === 0) {
+            if (merged.unchangedDuplicateCount > 0) {
                 showToast('error', '이미 추가된 플레이어만 포함되어 있습니다.');
             } else {
                 showToast('error', '읽어낸 플레이어가 없습니다.');
             }
+        } else if (merged.addedCount === 0) {
+            showToast('success', `${merged.updatedDiscordNameCount}명의 디스코드 이름을 갱신했습니다.`);
         } else if (waitlistCount > 0) {
-            const skippedText = duplicateCount > 0 ? `, 중복 ${duplicateCount}명 제외` : '';
-            showToast('success', `${uniquePlayers.length}명 추가, ${waitlistCount}명은 대기열로 이동${skippedText}`);
-        } else if (failedLines.length > 0 || duplicateCount > 0) {
+            showToast('success', `${merged.addedCount}명 추가, ${waitlistCount}명은 대기열로 이동${updateText}${duplicateText}`);
+        } else if (failedLines.length > 0 || merged.unchangedDuplicateCount > 0) {
             const failedText = failedLines.length > 0 ? `, ${failedLines.length}명은 직접 확인 필요` : '';
-            const duplicateText = duplicateCount > 0 ? `, 중복 ${duplicateCount}명 제외` : '';
-            showToast('error', `${uniquePlayers.length}명 추가${failedText}${duplicateText}`);
+            showToast('error', `${merged.addedCount}명 추가${updateText}${failedText}${duplicateText}`);
         } else {
-            showToast('success', `${uniquePlayers.length}명을 추가했습니다.`);
+            showToast('success', `${merged.addedCount}명을 추가했습니다${updateText}.`);
         }
         setPasteText('');
     };
