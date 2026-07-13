@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Player, Rank, Role } from '../../types';
+import type { MatchResultData, Player, Rank, Role } from '../../types';
 import { balancePlayers, recalculateMatchResult } from './index';
 
 const createRank = (role: Role, preferredRole: Role): Rank => ({
@@ -18,6 +18,25 @@ const createPlayer = (index: number, preferredRole: Role): Player => ({
     dps: createRank('DPS', preferredRole),
     sup: createRank('SUPPORT', preferredRole),
 });
+
+const getAssignmentSlots = (result: MatchResultData): Map<number, string> => {
+    const slots = new Map<number, string>();
+    const addTeam = (team: 'A' | 'B', assignment: MatchResultData['teamA']['assignment']) => {
+        slots.set(assignment.TANK[0].id, `${team}:TANK`);
+        for (const player of assignment.DPS) slots.set(player.id, `${team}:DPS`);
+        for (const player of assignment.SUPPORT) slots.set(player.id, `${team}:SUPPORT`);
+    };
+
+    addTeam('A', result.teamA.assignment);
+    addTeam('B', result.teamB.assignment);
+    return slots;
+};
+
+const countAssignmentChanges = (first: MatchResultData, second: MatchResultData): number => {
+    const firstSlots = getAssignmentSlots(first);
+    const secondSlots = getAssignmentSlots(second);
+    return [...firstSlots].filter(([playerId, slot]) => secondSlots.get(playerId) !== slot).length;
+};
 
 describe('balancePlayers', () => {
     it('선호 역할을 지키면서 모든 플레이어를 한 번씩 배치한다', () => {
@@ -48,6 +67,10 @@ describe('balancePlayers', () => {
             return rank.isPreferred;
         })).toBe(true);
         expect(balanceResult.alternatives).toHaveLength(4);
+        const results = [balanceResult.result, ...balanceResult.alternatives];
+        expect(results.every((result, index) => results.slice(index + 1).every(
+            (otherResult) => countAssignmentChanges(result, otherResult) >= 3,
+        ))).toBe(true);
     });
 
     it('동일 입력에 대해 같은 결과를 반환한다', () => {
