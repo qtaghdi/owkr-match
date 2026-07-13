@@ -77,10 +77,11 @@
 @layer base {
     html {
         scrollbar-gutter: stable;
+        color-scheme: dark;
     }
 
     body {
-        @apply bg-surface text-slate-200 antialiased;
+        @apply overflow-x-hidden bg-surface text-slate-200 antialiased;
         font-feature-settings: 'ss01' on, 'ss02' on;
     }
 
@@ -238,6 +239,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+    .animate-fade-in {
+        animation: none;
+    }
+
     .login-background {
         animation: none;
     }

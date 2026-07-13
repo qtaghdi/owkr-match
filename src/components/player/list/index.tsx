@@ -1,152 +1,259 @@
-import { Trash2, Users, AlertCircle, MicOff, Clock } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useRef, useState, type KeyboardEvent } from 'react';
+import { AlertCircle, Clock, MicOff, Pencil, Trash2, Users } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 import type { Player } from '../../../types';
-import { DamageIcon, SupportIcon, TankIcon } from '../../roles/icon';
 import { formatRank } from '../../../constants';
-import RankBadge from './rank-badge';
+import { DamageIcon, SupportIcon, TankIcon } from '../../roles/icon';
+import { BattleTagCopyButton } from '../battle-tag-copy-button';
 import { PlayerIdentity } from '../player-identity';
+import RankBadge from './rank-badge';
 
 interface PlayerListProps {
     participants: Player[];
     waitlist: Player[];
+    onEditPlayer: (player: Player) => void;
     onRemovePlayer: (playerId: number) => void;
     onClearAll: () => void;
 }
 
-const PlayerList = ({ participants, waitlist, onRemovePlayer, onClearAll }: PlayerListProps) => {
+type PlayerListTab = 'participants' | 'waitlist';
+
+/**
+ * @description 참가자와 대기열을 탭으로 전환하며 제한된 스크롤 영역에서 관리한다.
+ */
+const PlayerList = ({ participants, waitlist, onEditPlayer, onRemovePlayer, onClearAll }: PlayerListProps) => {
+    const [activeTab, setActiveTab] = useState<PlayerListTab>('participants');
+    const participantsTabRef = useRef<HTMLButtonElement>(null);
+    const waitlistTabRef = useRef<HTMLButtonElement>(null);
     const participantCount = participants.length;
     const waitlistCount = waitlist.length;
     const totalCount = participantCount + waitlistCount;
     const isReady = participantCount === 10;
 
-    const renderPlayerItem = (p: Player, isWaitlist: boolean = false) => (
+    const handleTabKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+        if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+        event.preventDefault();
+        const nextTab = activeTab === 'participants' ? 'waitlist' : 'participants';
+        setActiveTab(nextTab);
+        if (nextTab === 'participants') participantsTabRef.current?.focus();
+        else waitlistTabRef.current?.focus();
+    };
+
+    const renderPlayerItem = (player: Player, isWaitlist = false) => (
         <motion.li
-            key={p.id}
+            key={player.id}
             layout
-            initial={{ opacity: 0, y: -10 }}
+            initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, x: -20, transition: { duration: 0.2 } }}
-            className={`group p-3 rounded-xl flex justify-between items-center border transition-all ${
+            exit={{ opacity: 0, x: -16, transition: { duration: 0.16 } }}
+            className={`group rounded-xl border px-3 py-2.5 transition-colors ${
                 isWaitlist
-                    ? 'bg-slate-800/30 hover:bg-slate-800/50 border-slate-700/30 hover:border-slate-600/50'
-                    : 'bg-surface hover:bg-surface-overlay border-slate-800/50 hover:border-slate-700/50'
+                    ? 'border-amber-500/10 bg-amber-500/[0.035] hover:border-amber-500/20 hover:bg-amber-500/[0.06]'
+                    : 'border-slate-800/60 bg-surface hover:border-slate-700/70 hover:bg-surface-overlay'
             }`}
         >
-            <div className="min-w-0 flex-1">
-                <div className="flex min-w-0 items-center gap-1.5">
-                    <PlayerIdentity player={p} />
-                    {p.noMic && <MicOff size={12} className="text-red-400 flex-shrink-0" />}
+            <div className="flex min-w-0 items-center gap-2">
+                <div className="min-w-0 flex-1">
+                    <div className="flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5">
+                        <PlayerIdentity player={player} layout="inline" />
+                        <BattleTagCopyButton battleTag={player.name} />
+                        {player.noMic && (
+                            <span className="inline-flex items-center gap-1 text-[11px] text-rose-400">
+                                <MicOff size={12} aria-hidden="true" />
+                                마이크 없음
+                            </span>
+                        )}
+                    </div>
+
+                    <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <RankBadge
+                            icon={<TankIcon size={12} aria-hidden="true" />}
+                            rank={player.tank}
+                            label={formatRank(player.tank)}
+                        />
+                        <RankBadge
+                            icon={<DamageIcon size={12} aria-hidden="true" />}
+                            rank={player.dps}
+                            label={formatRank(player.dps)}
+                        />
+                        <RankBadge
+                            icon={<SupportIcon size={12} aria-hidden="true" />}
+                            rank={player.sup}
+                            label={formatRank(player.sup)}
+                        />
+                    </div>
                 </div>
-                <div className="flex items-center gap-3 mt-1.5">
-                    <RankBadge
-                        icon={<TankIcon size={12} />}
-                        rank={p.tank}
-                        label={formatRank(p.tank)}
-                    />
-                    <RankBadge
-                        icon={<DamageIcon size={12} />}
-                        rank={p.dps}
-                        label={formatRank(p.dps)}
-                    />
-                    <RankBadge
-                        icon={<SupportIcon size={12} />}
-                        rank={p.sup}
-                        label={formatRank(p.sup)}
-                    />
+
+                <div className="-mr-1 flex shrink-0 items-center gap-0.5" data-exclude-export data-html2canvas-ignore="true">
+                    <button
+                        type="button"
+                        onClick={() => onEditPlayer(player)}
+                        className="inline-flex h-8 w-8 touch-manipulation items-center justify-center rounded-md text-slate-600 transition-colors hover:bg-cyan-500/10 hover:text-cyan-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/70"
+                        aria-label={`${player.discordName ?? player.name} 수정`}
+                        title={`${player.discordName ?? player.name} 수정`}
+                    >
+                        <Pencil size={14} aria-hidden="true" />
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => onRemovePlayer(player.id)}
+                        className="inline-flex h-8 w-8 touch-manipulation items-center justify-center rounded-md text-slate-600 transition-colors hover:bg-rose-500/10 hover:text-rose-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/70"
+                        aria-label={`${player.discordName ?? player.name} 삭제`}
+                        title={`${player.discordName ?? player.name} 삭제`}
+                    >
+                        <Trash2 size={14} aria-hidden="true" />
+                    </button>
                 </div>
             </div>
-            <button
-                onClick={() => onRemovePlayer(p.id)}
-                className="ml-2 p-2 rounded-lg text-slate-500 hover:text-danger hover:bg-danger-subtle opacity-70 group-hover:opacity-100 transition-all"
-                aria-label={`${p.discordName ?? p.name} 삭제`}
-            >
-                <Trash2 size={16} />
-            </button>
         </motion.li>
     );
 
     return (
-        <div className="card min-h-[300px]">
+        <section className="card flex min-h-[320px] flex-1 flex-col overflow-hidden p-4 xl:min-h-0" aria-labelledby="player-management-title">
             {/* Header */}
-            <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2">
-                        <Users size={18} className="text-slate-400" />
-                        <h2 className="text-base font-semibold text-white">참여 명단</h2>
-                    </div>
-                    <div className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-                        isReady
-                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                            : 'bg-slate-800 text-slate-400 border border-slate-700'
-                    }`}>
-                        {participantCount}/10
-                    </div>
+            <div className="mb-3 flex shrink-0 items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-2">
+                    <Users size={17} className="shrink-0 text-slate-400" aria-hidden="true" />
+                    <h2 id="player-management-title" className="truncate text-sm font-semibold text-white">
+                        참가자 관리
+                    </h2>
+                    <span className="shrink-0 text-xs tabular-nums text-slate-500">총 {totalCount}명</span>
                 </div>
 
                 {totalCount > 0 && (
                     <button
+                        type="button"
                         onClick={onClearAll}
-                        className="btn-danger text-xs flex items-center gap-1.5"
+                        className="inline-flex min-h-8 shrink-0 touch-manipulation items-center gap-1 rounded-md px-2 text-xs text-slate-500 transition-colors hover:bg-rose-500/10 hover:text-rose-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/70"
                     >
-                        <Trash2 size={12} />
-                        명단 비우기
+                        <Trash2 size={12} aria-hidden="true" />
+                        전체 삭제
                     </button>
                 )}
             </div>
 
-            {/* Status Message */}
             {!isReady && participantCount > 0 && (
-                <div className="flex items-center gap-2 px-3 py-2 mb-4 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-                    <AlertCircle size={14} className="text-amber-400" />
-                    <span className="text-xs text-amber-400">
+                <div className="mb-3 flex shrink-0 items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2">
+                    <AlertCircle size={13} className="shrink-0 text-amber-400" aria-hidden="true" />
+                    <span className="text-xs text-amber-300">
                         팀을 짜려면 {10 - participantCount}명 더 필요합니다
                     </span>
                 </div>
             )}
 
-            {/* Participants List */}
-            <ul className="space-y-2 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
-                <AnimatePresence mode="popLayout">
-                    {participants.map((p) => renderPlayerItem(p, false))}
-                </AnimatePresence>
+            <div
+                className="mb-3 grid shrink-0 grid-cols-2 gap-1 rounded-xl bg-surface p-1"
+                role="tablist"
+                aria-label="참가자 명단 구분"
+                aria-orientation="horizontal"
+                onKeyDown={handleTabKeyDown}
+            >
+                <button
+                    ref={participantsTabRef}
+                    id="participants-tab"
+                    type="button"
+                    role="tab"
+                    aria-selected={activeTab === 'participants'}
+                    aria-controls="participants-panel"
+                    tabIndex={activeTab === 'participants' ? 0 : -1}
+                    onClick={() => setActiveTab('participants')}
+                    className={`flex min-h-10 touch-manipulation items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/70 ${
+                        activeTab === 'participants'
+                            ? 'bg-slate-700/80 text-white shadow-sm'
+                            : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+                    }`}
+                >
+                    <Users size={14} aria-hidden="true" />
+                    참가자
+                    <span className={`rounded-full px-1.5 py-0.5 text-[10px] tabular-nums ${
+                        isReady ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-800 text-slate-400'
+                    }`}>
+                        {participantCount}/10
+                    </span>
+                </button>
+                <button
+                    ref={waitlistTabRef}
+                    id="waitlist-tab"
+                    type="button"
+                    role="tab"
+                    aria-selected={activeTab === 'waitlist'}
+                    aria-controls="waitlist-panel"
+                    tabIndex={activeTab === 'waitlist' ? 0 : -1}
+                    onClick={() => setActiveTab('waitlist')}
+                    className={`flex min-h-10 touch-manipulation items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 ${
+                        activeTab === 'waitlist'
+                            ? 'bg-amber-500/15 text-amber-200 shadow-sm'
+                            : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+                    }`}
+                >
+                    <Clock size={14} aria-hidden="true" />
+                    대기열
+                    <span className="rounded-full bg-slate-800 px-1.5 py-0.5 text-[10px] tabular-nums text-slate-400">
+                        {waitlistCount}
+                    </span>
+                </button>
+            </div>
 
-                {/* Empty State */}
-                {participantCount === 0 && (
-                    <motion.li
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="flex flex-col items-center justify-center py-12 text-center"
+            <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 max-xl:max-h-[32rem]">
+                {activeTab === 'participants' ? (
+                    <div
+                        id="participants-panel"
+                        role="tabpanel"
+                        aria-labelledby="participants-tab"
+                        tabIndex={0}
+                        className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
                     >
-                        <div className="w-12 h-12 rounded-full bg-slate-800/50 flex items-center justify-center mb-3">
-                            <Users size={20} className="text-slate-600" />
-                        </div>
-                        <p className="text-sm text-slate-500">아직 추가된 플레이어가 없습니다</p>
-                        <p className="text-xs text-slate-600 mt-1">채팅을 붙여넣거나 직접 입력해 주세요</p>
-                    </motion.li>
-                )}
-            </ul>
+                        <ul className="space-y-1.5" aria-label="참가자 목록">
+                            <AnimatePresence mode="popLayout">
+                                {participants.map((player) => renderPlayerItem(player))}
+                            </AnimatePresence>
 
-            {/* Waitlist Section */}
-            {waitlistCount > 0 && (
-                <div className="mt-6 pt-4 border-t border-slate-800">
-                    <div className="flex items-center gap-2 mb-3">
-                        <Clock size={14} className="text-slate-500" />
-                        <h3 className="text-sm font-medium text-slate-400">대기 명단</h3>
-                        <span className="px-2 py-0.5 rounded-full text-xs bg-slate-800 text-slate-500 border border-slate-700">
-                            {waitlistCount}명
-                        </span>
+                            {participantCount === 0 && (
+                                <motion.li
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    className="flex flex-col items-center justify-center py-10 text-center"
+                                >
+                                    <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-slate-800/50">
+                                        <Users size={18} className="text-slate-600" aria-hidden="true" />
+                                    </div>
+                                    <p className="text-sm text-slate-500">아직 추가된 플레이어가 없습니다</p>
+                                    <p className="mt-1 text-xs text-slate-600">채팅을 붙여넣거나 직접 입력해 주세요</p>
+                                </motion.li>
+                            )}
+                        </ul>
                     </div>
-                    <p className="text-xs text-slate-600 mb-3">
-                        참여자 제거 시 자동으로 승격됩니다
-                    </p>
-                    <ul className="space-y-2 max-h-[150px] overflow-y-auto pr-1 custom-scrollbar">
-                        <AnimatePresence mode="popLayout">
-                            {waitlist.map((p) => renderPlayerItem(p, true))}
-                        </AnimatePresence>
-                    </ul>
-                </div>
-            )}
-        </div>
+                ) : (
+                    <div
+                        id="waitlist-panel"
+                        role="tabpanel"
+                        aria-labelledby="waitlist-tab"
+                        tabIndex={0}
+                        className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60"
+                    >
+                        <p className="mb-2 px-1 text-[11px] text-slate-600">참가자 삭제 시 대기열 첫 번째 인원이 자동 승격됩니다</p>
+                        <ul className="space-y-1.5" aria-label="대기열 목록">
+                            <AnimatePresence mode="popLayout">
+                                {waitlist.map((player) => renderPlayerItem(player, true))}
+                            </AnimatePresence>
+
+                            {waitlistCount === 0 && (
+                                <motion.li
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    className="flex flex-col items-center justify-center py-10 text-center"
+                                >
+                                    <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-amber-500/10">
+                                        <Clock size={18} className="text-amber-500/60" aria-hidden="true" />
+                                    </div>
+                                    <p className="text-sm text-slate-500">대기 중인 참가자가 없습니다</p>
+                                </motion.li>
+                            )}
+                        </ul>
+                    </div>
+                )}
+            </div>
+        </section>
     );
 };
 

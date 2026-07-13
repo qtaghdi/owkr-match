@@ -4,6 +4,25 @@ const ROLES = ['TANK', 'DPS', 'SUPPORT'] as const;
 
 const normalizeBattleTag = (name: string): string => name.trim().toLowerCase();
 
+const getPlayerFingerprint = (player: Player): string => {
+    const rankFingerprint = (rank: Player['tank']): string => [
+        rank.tier,
+        rank.div,
+        rank.score,
+        rank.isPreferred ? 1 : 0,
+        rank.isAvoided ? 1 : 0,
+    ].join(':');
+
+    return [
+        normalizeBattleTag(player.name),
+        player.discordName?.trim() ?? '',
+        player.noMic ? 1 : 0,
+        rankFingerprint(player.tank),
+        rankFingerprint(player.dps),
+        rankFingerprint(player.sup),
+    ].join('|');
+};
+
 export interface PlayerMergeResult {
     players: Player[];
     addedCount: number;
@@ -88,4 +107,21 @@ export const syncMatchResultPlayerIdentities = (
             assignment: syncAssignmentIdentities(result.teamB.assignment, playerByBattleTag),
         },
     };
+};
+
+/**
+ * @description 현재 참가자 10명의 정보와 저장된 매칭 결과가 서로 다른지 확인한다.
+ */
+export const isMatchResultStale = (result: MatchResultData, participants: Player[]): boolean => {
+    if (participants.length !== 10) return true;
+
+    const resultPlayers = [result.teamA, result.teamB].flatMap(team => (
+        ROLES.flatMap(role => team.assignment[role])
+    ));
+    if (resultPlayers.length !== 10) return true;
+
+    const currentFingerprints = participants.map(getPlayerFingerprint).sort();
+    const resultFingerprints = resultPlayers.map(getPlayerFingerprint).sort();
+
+    return currentFingerprints.some((fingerprint, index) => fingerprint !== resultFingerprints[index]);
 };

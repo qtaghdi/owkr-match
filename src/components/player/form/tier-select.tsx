@@ -21,6 +21,7 @@ const TierSelect = ({ prefix, label, prefKey, avoidKey, inputs, setInputs }: Tie
     const divKey = `${prefix}Div` as 'tDiv' | 'dDiv' | 'sDiv';
     const currentTier = inputs[tierKey];
     const tierImg = getTierImage(currentTier);
+    const tierOptions = [...TIERS, 'UNRANKED'];
 
     const togglePref = () => {
         setInputs(prev => ({ ...prev, [prefKey]: !prev[prefKey], [avoidKey]: false }));
@@ -38,25 +39,29 @@ const TierSelect = ({ prefix, label, prefKey, avoidKey, inputs, setInputs }: Tie
                     <button
                         type="button"
                         onClick={togglePref}
-                        className={`text-xs flex items-center gap-1 px-2 py-1 rounded-md transition-all ${
+                        aria-pressed={inputs[prefKey]}
+                        aria-label={`${label} 선호 역할`}
+                        className={`flex min-h-8 touch-manipulation items-center gap-1 rounded-md border px-2 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 ${
                             inputs[prefKey]
-                                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                                : 'bg-slate-800 text-slate-500 border border-slate-700 hover:border-slate-600'
+                                ? 'border-amber-500/30 bg-amber-500/20 text-amber-400'
+                                : 'border-slate-700 bg-slate-800 text-slate-500 hover:border-slate-600'
                         }`}
                     >
-                        <Star size={10} fill={inputs[prefKey] ? "currentColor" : "none"} />
+                        <Star size={10} fill={inputs[prefKey] ? "currentColor" : "none"} aria-hidden="true" />
                         선호
                     </button>
                     <button
                         type="button"
                         onClick={toggleAvoid}
-                        className={`text-xs flex items-center gap-1 px-2 py-1 rounded-md transition-all ${
+                        aria-pressed={inputs[avoidKey]}
+                        aria-label={`${label} 비선호 역할`}
+                        className={`flex min-h-8 touch-manipulation items-center gap-1 rounded-md border px-2 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/70 ${
                             inputs[avoidKey]
-                                ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                                : 'bg-slate-800 text-slate-500 border border-slate-700 hover:border-slate-600'
+                                ? 'border-rose-500/30 bg-rose-500/20 text-rose-400'
+                                : 'border-slate-700 bg-slate-800 text-slate-500 hover:border-slate-600'
                         }`}
                     >
-                        <Ban size={10} />
+                        <Ban size={10} aria-hidden="true" />
                         비선호
                     </button>
                 </div>
@@ -67,7 +72,10 @@ const TierSelect = ({ prefix, label, prefKey, avoidKey, inputs, setInputs }: Tie
                         <img
                             key={tierImg}
                             src={tierImg}
-                            alt={currentTier}
+                            alt=""
+                            width={24}
+                            height={24}
+                            aria-hidden="true"
                             className="w-full h-full object-contain"
                             onLoad={(e) => e.currentTarget.style.display = 'block'}
                             onError={(e) => e.currentTarget.style.display = 'none'}
@@ -77,23 +85,41 @@ const TierSelect = ({ prefix, label, prefKey, avoidKey, inputs, setInputs }: Tie
                 <div className="flex gap-2 flex-1">
                     <div className="relative flex-1">
                         <select
+                            name={`${prefix}-tier`}
+                            aria-label={`${label} 티어`}
                             className="input-base pr-8 appearance-none cursor-pointer"
                             value={currentTier}
-                            onChange={(e) => setInputs(prev => ({ ...prev, [tierKey]: e.target.value }))}
+                            onChange={(event) => {
+                                const nextTier = event.target.value;
+                                setInputs(prev => ({
+                                    ...prev,
+                                    [tierKey]: nextTier,
+                                    [divKey]: nextTier === 'UNRANKED'
+                                        ? '0'
+                                        : prev[divKey] === '0' ? '3' : prev[divKey],
+                                }));
+                            }}
                         >
-                            {TIERS.map(t => <option key={t} value={t}>{TIER_LABEL_MAP[t]}</option>)}
+                            {tierOptions.map(tier => (
+                                <option key={tier} value={tier}>{TIER_LABEL_MAP[tier]}</option>
+                            ))}
                         </select>
-                        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+                        <ChevronDown size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true" />
                     </div>
                     <div className="relative w-20">
                         <select
-                            className="input-base text-center appearance-none cursor-pointer"
+                            name={`${prefix}-division`}
+                            aria-label={`${label} 등급`}
+                            disabled={currentTier === 'UNRANKED'}
+                            className="input-base cursor-pointer appearance-none text-center disabled:cursor-not-allowed disabled:opacity-60"
                             value={inputs[divKey]}
                             onChange={(e) => setInputs(prev => ({ ...prev, [divKey]: e.target.value }))}
                         >
-                            {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
+                            {currentTier === 'UNRANKED'
+                                ? <option value="0">-</option>
+                                : [1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
                         </select>
-                        <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+                        <ChevronDown size={14} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true" />
                     </div>
                 </div>
             </div>
