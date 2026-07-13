@@ -6,6 +6,7 @@ import { DamageIcon, SupportIcon, TankIcon } from '../../roles/icon';
 import { getTierImage } from '../../../utils/tier';
 import PlayerTooltip from './player-tooltip';
 import { PlayerIdentity } from '../../player/player-identity';
+import { BattleTagCopyButton } from '../../player/battle-tag-copy-button';
 
 interface MatchupTableProps {
     matchResult: MatchResultData;
@@ -19,6 +20,38 @@ interface RowDef {
     playerA: Player;
     playerB: Player;
 }
+
+interface PlayerStatusIndicatorsProps {
+    isPreferred: boolean;
+    isAvoided: boolean;
+    noMic?: boolean;
+    className?: string;
+}
+
+const PlayerStatusIndicators = ({
+    isPreferred,
+    isAvoided,
+    noMic,
+    className = '',
+}: PlayerStatusIndicatorsProps) => (
+    <div className={`flex w-10 shrink-0 items-center justify-end gap-1 ${className}`}>
+        {isPreferred && (
+            <span className="inline-flex text-yellow-400" aria-label="선호 역할" title="선호 역할">
+                <Star size={12} className="fill-current" aria-hidden="true" />
+            </span>
+        )}
+        {isAvoided && (
+            <span className="inline-flex text-rose-400" aria-label="비선호 역할" title="비선호 역할">
+                <Ban size={12} aria-hidden="true" />
+            </span>
+        )}
+        {noMic && (
+            <span className="inline-flex text-red-400" aria-label="마이크 미사용" title="마이크 미사용">
+                <MicOff size={12} aria-hidden="true" />
+            </span>
+        )}
+    </div>
+);
 
 const getRoleIcon = (role: Role) => {
     switch (role) {
@@ -56,13 +89,11 @@ const MatchupTable = ({ matchResult, onSlotClick, swapSource }: MatchupTableProp
                 <div className="flex-1 flex items-center gap-2">
                     <span className="font-bold text-lg text-blue-400">1팀</span>
                     <span className="text-xs px-2 py-1 rounded font-semibold bg-orange-500/20 text-orange-300">선공격</span>
-                    <span className="text-sm font-medium text-slate-400 ml-auto">{teamA.realScore.toLocaleString()}점</span>
                 </div>
                 <div className="w-10" />
                 <div className="flex-1 flex items-center gap-2 flex-row-reverse">
                     <span className="font-bold text-lg text-red-400">2팀</span>
                     <span className="text-xs px-2 py-1 rounded font-semibold bg-emerald-500/20 text-emerald-300">선수비</span>
-                    <span className="text-sm font-medium text-slate-400 mr-auto">{teamB.realScore.toLocaleString()}점</span>
                 </div>
             </div>
 
@@ -90,27 +121,38 @@ const MatchupTable = ({ matchResult, onSlotClick, swapSource }: MatchupTableProp
                             onFocus={() => setHoveredSlot(slotKeyA)}
                             onBlur={() => setHoveredSlot(null)}
                         >
-                            <button
-                                onClick={() => onSlotClick(0, row.role, row.arrayIndex)}
-                                aria-label={`${row.playerA.discordName ?? row.playerA.name} 교체 슬롯 선택`}
-                                className={`w-full flex items-center justify-end gap-2 px-4 py-3 rounded-l-lg transition-colors text-right min-w-0 ${
+                            <div
+                                className={`relative flex w-full min-w-0 items-center justify-end rounded-l-lg transition-colors ${
                                     selA ? 'bg-blue-900/40 ring-1 ring-inset ring-blue-500' : 'hover:bg-slate-800/70'
                                 }`}
                             >
-                                <PlayerIdentity player={row.playerA} align="right" />
-                                {rankA.isPreferred && <Star size={12} className="text-yellow-400 fill-yellow-400 shrink-0" />}
-                                {rankA.isAvoided && <Ban size={12} className="text-rose-400 shrink-0" />}
-                                {row.playerA.noMic && <MicOff size={12} className="text-red-400 shrink-0" />}
-                                <div className="flex items-center gap-1.5 shrink-0">
-                                    {tierImgA && (
-                                        <img src={tierImgA} alt={rankA.tier} className="w-6 h-6 object-contain"
-                                            onError={(e) => e.currentTarget.style.display = 'none'} />
-                                    )}
-                                    <span className="text-sm font-mono text-slate-200 w-10 text-left">
-                                        {formatRank(rankA).replace('★', '').replace('?', '')}
-                                    </span>
+                                <button
+                                    type="button"
+                                    data-exclude-export
+                                    data-html2canvas-ignore="true"
+                                    onClick={() => onSlotClick(0, row.role, row.arrayIndex)}
+                                    aria-label={`${row.playerA.discordName ?? row.playerA.name} 교체 슬롯 선택`}
+                                    className="absolute inset-0 z-0 rounded-l-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                                />
+                                <div className="pointer-events-none relative z-10 flex w-full min-w-0 items-center justify-end gap-2 px-4 py-3 text-right">
+                                    <PlayerIdentity player={row.playerA} align="right" />
+                                    <BattleTagCopyButton battleTag={row.playerA.name} className="pointer-events-auto" />
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                        {tierImgA && (
+                                            <img src={tierImgA} alt={rankA.tier} width={24} height={24} className="w-6 h-6 object-contain"
+                                                onError={(e) => e.currentTarget.style.display = 'none'} />
+                                        )}
+                                        <span className="text-sm font-mono text-slate-200 w-10 text-left">
+                                            {formatRank(rankA).replace('★', '').replace('?', '')}
+                                        </span>
+                                    </div>
+                                    <PlayerStatusIndicators
+                                        isPreferred={rankA.isPreferred}
+                                        isAvoided={rankA.isAvoided}
+                                        noMic={row.playerA.noMic}
+                                    />
                                 </div>
-                            </button>
+                            </div>
                             <PlayerTooltip player={row.playerA} visible={hoveredSlot === slotKeyA} />
                         </div>
 
@@ -127,27 +169,39 @@ const MatchupTable = ({ matchResult, onSlotClick, swapSource }: MatchupTableProp
                             onFocus={() => setHoveredSlot(slotKeyB)}
                             onBlur={() => setHoveredSlot(null)}
                         >
-                            <button
-                                onClick={() => onSlotClick(1, row.role, row.arrayIndex)}
-                                aria-label={`${row.playerB.discordName ?? row.playerB.name} 교체 슬롯 선택`}
-                                className={`w-full flex items-center gap-2 px-4 py-3 rounded-r-lg transition-colors text-left min-w-0 ${
+                            <div
+                                className={`relative flex w-full min-w-0 items-center rounded-r-lg transition-colors ${
                                     selB ? 'bg-red-900/30 ring-1 ring-inset ring-red-500' : 'hover:bg-slate-800/70'
                                 }`}
                             >
-                                <div className="flex items-center gap-1.5 shrink-0">
-                                    <span className="text-sm font-mono text-slate-200 w-10 text-right">
-                                        {formatRank(rankB).replace('★', '').replace('?', '')}
-                                    </span>
-                                    {tierImgB && (
-                                        <img src={tierImgB} alt={rankB.tier} className="w-6 h-6 object-contain"
-                                            onError={(e) => e.currentTarget.style.display = 'none'} />
-                                    )}
+                                <button
+                                    type="button"
+                                    data-exclude-export
+                                    data-html2canvas-ignore="true"
+                                    onClick={() => onSlotClick(1, row.role, row.arrayIndex)}
+                                    aria-label={`${row.playerB.discordName ?? row.playerB.name} 교체 슬롯 선택`}
+                                    className="absolute inset-0 z-0 rounded-r-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
+                                />
+                                <div className="pointer-events-none relative z-10 flex w-full min-w-0 items-center gap-2 px-4 py-3 text-left">
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                        <span className="text-sm font-mono text-slate-200 w-10 text-right">
+                                            {formatRank(rankB).replace('★', '').replace('?', '')}
+                                        </span>
+                                        {tierImgB && (
+                                            <img src={tierImgB} alt={rankB.tier} width={24} height={24} className="w-6 h-6 object-contain"
+                                                onError={(e) => e.currentTarget.style.display = 'none'} />
+                                        )}
+                                    </div>
+                                    <PlayerIdentity player={row.playerB} />
+                                    <BattleTagCopyButton battleTag={row.playerB.name} className="pointer-events-auto" />
+                                    <PlayerStatusIndicators
+                                        isPreferred={rankB.isPreferred}
+                                        isAvoided={rankB.isAvoided}
+                                        noMic={row.playerB.noMic}
+                                        className="ml-auto"
+                                    />
                                 </div>
-                                {row.playerB.noMic && <MicOff size={12} className="text-red-400 shrink-0" />}
-                                {rankB.isAvoided && <Ban size={12} className="text-rose-400 shrink-0" />}
-                                {rankB.isPreferred && <Star size={12} className="text-yellow-400 fill-yellow-400 shrink-0" />}
-                                <PlayerIdentity player={row.playerB} />
-                            </button>
+                            </div>
                             <PlayerTooltip player={row.playerB} visible={hoveredSlot === slotKeyB} alignRight />
                         </div>
                     </div>
