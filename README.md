@@ -94,4 +94,7 @@ pnpm check
 
 ## 라이선스
 
-[MIT License](LICENSE.md)
+소스 코드는 [MIT License](LICENSE.md)에 따라 사용할 수 있습니다.
+
+Overwatch, Blizzard Entertainment, Battle.net 및 관련 이름, 로고, 랭크 아이콘, 게임 에셋은 각 권리자에게 있습니다.
+이 프로젝트는 비공식 커뮤니티 도구이며 Blizzard Entertainment와 관련이 없습니다.
