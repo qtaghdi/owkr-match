@@ -5,6 +5,6 @@
  */
 export const getTierImage = (tier: string): string | undefined => {
     if (!tier) return undefined;
-    if (tier === 'UNRANKED') return '/tier/unrank.png';
-    return `/tier/${tier.toLowerCase()}.png`;
+    const fileName = tier === 'UNRANKED' ? 'unrank' : tier.toLowerCase();
+    return `${import.meta.env.BASE_URL}tier/${fileName}.png`;
 };

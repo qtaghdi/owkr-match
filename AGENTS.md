@@ -7,8 +7,7 @@ OWKR Match is a web-based Overwatch 2 team balancing tool for managing competiti
 ## Tech Stack
 
 - **Frontend:** React 19, TypeScript 5.9, Vite (Rolldown), Tailwind CSS 3.4
-- **Backend:** Vercel serverless functions (Node.js)
-- **Auth:** Discord OAuth2 + JWT (7-day tokens, httpOnly cookies)
+- **Hosting:** GitHub Pages (static site)
 - **Animation:** Framer Motion
 - **Build:** Vite, ESLint 9, PostCSS
 
@@ -17,13 +16,11 @@ OWKR Match is a web-based Overwatch 2 team balancing tool for managing competiti
 ```
 src/
 ├── components/          # React components by feature
-│   ├── auth/           # Discord login UI
 │   ├── player/form/    # Player input + bulk paste
 │   ├── player/list/    # Player list display
 │   ├── match/result/   # Team cards + swap UI
 │   └── roles/icon/     # Role icons
 ├── hooks/
-│   ├── use-auth.ts     # Discord auth state
 │   └── use-balance.ts  # Balance worker state
 ├── types/              # TypeScript interfaces
 ├── constants/          # Tier definitions, scoring
@@ -31,19 +28,17 @@ src/
     ├── balance/        # Core balancing algorithm
     └── parser/         # Discord chat log parsing
 
-api/auth/               # Vercel serverless routes
-├── login.ts            # Discord OAuth redirect
-├── callback.ts         # OAuth callback, JWT issuance
-└── me.ts               # JWT verification
+.github/workflows/       # GitHub Pages deployment
 ```
 
 ## Commands
 
 ```bash
-npm run dev      # Start dev server (localhost:5173)
-npm run build    # Production build to dist/
-npm run lint     # ESLint check
-npm run preview  # Preview production build
+pnpm dev      # Start dev server (localhost:5173)
+pnpm build    # Production build to dist/
+pnpm lint     # ESLint check
+pnpm preview  # Preview production build
+pnpm check    # Typecheck, lint, test, and build
 ```
 
 ## Key Concepts
@@ -66,15 +61,6 @@ PlayerName#1234 다3 플2 골1          # Abbreviations
 PlayerName#1234 다3! 플2 골1         # ! = preferred
 ```
 
-## Environment Variables
-
-| Variable | Purpose |
-|----------|---------|
-| `DISCORD_CLIENT_ID` | OAuth2 app ID |
-| `DISCORD_CLIENT_SECRET` | OAuth2 secret |
-| `ADMIN_USER_IDS` | Comma-separated allowed Discord user IDs |
-| `JWT_SECRET` | JWT signing secret |
-
 ## Patterns & Conventions
 
 - **Components:** Functional + hooks only, no class components
@@ -95,7 +81,7 @@ PlayerName#1234 다3! 플2 골1         # ! = preferred
 
 ## Notes
 
-- No test suite configured
+- Tests use Vitest
 - Korean UI throughout
-- Deployed on Vercel (frontend + serverless API)
+- Deployed on GitHub Pages through GitHub Actions
 - localStorage keys: `owkr_players`, `owkr_result`

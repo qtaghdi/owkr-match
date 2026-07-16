@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Shuffle, RefreshCcw, Loader2, LogOut, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Shuffle, RefreshCcw, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TIERS, getScore } from './constants';
 import { parseMultipleLines } from './utils/parser';
@@ -7,13 +7,10 @@ import { recalculateMatchResult } from './utils/balance';
 import { isMatchResultStale, mergePlayersByBattleTag, syncMatchResultPlayerIdentities } from './utils/player';
 import { setWithExpiry, getWithExpiry, removeItem, cleanupExpired } from './utils/storage';
 import { useBalance } from './hooks/use-balance';
-import { useAuth } from './hooks/use-auth';
 import type { MatchResultData, Player, Role, SwapSource, Tier } from './types';
 import PlayerForm, { type PlayerInputMode } from './components/player/form';
 import PlayerList from './components/player/list';
 import MatchResult from './components/match/result';
-import LoginScreen from './components/auth/login-screen';
-import LoadingScreen from './components/common/loading-screen';
 
 const STORAGE_KEYS = {
     PLAYERS: 'owkr_players',
@@ -42,8 +39,6 @@ const getEditableDivision = (tier: string, division: number | string) => {
 };
 
 const App = () => {
-    const { user, isLoading } = useAuth();
-
     const [players, setPlayers] = useState<Player[]>(() => {
         return getWithExpiry<Player[]>(STORAGE_KEYS.PLAYERS) || [];
     });
@@ -329,9 +324,6 @@ const App = () => {
         }
     };
 
-    if (isLoading) return <LoadingScreen />;
-    if (!user) return <LoginScreen />;
-
     // 참여 명단 (첫 10명)과 대기 명단 (나머지) 분리
     const participants = players.slice(0, 10);
     const waitlist = players.slice(10);
@@ -342,7 +334,7 @@ const App = () => {
         <div className="min-h-screen bg-surface text-slate-200 font-sans">
             {/* Header */}
             <header className="sticky top-0 z-50 bg-surface/80 backdrop-blur-xl border-b border-slate-800/50">
-                <div className="mx-auto flex h-16 max-w-[1600px] items-center justify-between px-4 md:px-8">
+                <div className="mx-auto flex h-16 max-w-[1600px] items-center px-4 md:px-8">
                     <motion.h1
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
@@ -351,23 +343,6 @@ const App = () => {
                         OWKR Match
                     </motion.h1>
 
-                    <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2 text-sm text-slate-400">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                            {user.username}
-                        </div>
-                        <button
-                            type="button"
-                            onClick={async () => {
-                                await fetch('/api/auth/logout', { method: 'POST' });
-                                window.location.reload();
-                            }}
-                            className="btn-ghost text-xs flex items-center gap-1.5"
-                        >
-                            <LogOut size={14} aria-hidden="true" />
-                            로그아웃
-                        </button>
-                    </div>
                 </div>
             </header>
 
