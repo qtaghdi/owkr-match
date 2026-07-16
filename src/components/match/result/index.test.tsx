@@ -43,7 +43,7 @@ const matchResult: MatchResultData = {
 };
 
 describe('MatchResult', () => {
-    it('스위치를 OFF로 시작하고 화면과 별도 export 영역을 compact로 렌더링한다', () => {
+    it('탱·딜·힐 티어 스위치를 OFF로 시작하고 화면 영역을 이미지 복사 대상으로 사용한다', () => {
         const markup = renderToStaticMarkup(
             <MatchResult
                 matchResult={matchResult}
@@ -54,9 +54,8 @@ describe('MatchResult', () => {
 
         expect(markup).toContain('role="switch"');
         expect(markup).toContain('aria-checked="false"');
-        expect(markup).toContain('전체 티어 표시');
-        expect(markup).toContain('data-export-render="true"');
-        expect(markup.match(/data-display-mode="compact"/g)).toHaveLength(2);
-        expect(markup).not.toContain('data-display-mode="all"');
+        expect(markup).toContain('탱·딜·힐 티어 표시');
+        expect(markup).not.toContain('data-export-render');
+        expect(markup).not.toContain('data-display-mode');
     });
 });

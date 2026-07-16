@@ -52,18 +52,16 @@ const matchResult: MatchResultData = {
 const countMatches = (value: string, pattern: RegExp): number => value.match(pattern)?.length ?? 0;
 
 describe('MatchupTable', () => {
-    it('compact 모드에서는 플레이어마다 현재 배정 티어 하나만 표시한다', () => {
+    it('스위치가 꺼지면 플레이어마다 현재 배정 티어 하나만 표시한다', () => {
         const markup = renderToStaticMarkup(
             <MatchupTable
                 matchResult={matchResult}
+                onSlotClick={() => undefined}
                 swapSource={null}
-                displayMode="compact"
-                interactive={false}
             />,
         );
 
-        expect(markup).toContain('data-display-mode="compact"');
-        expect(markup).not.toContain('data-rank-role');
+        expect(markup).not.toContain('현재 배정');
         expect(countMatches(markup, /<img /g)).toBe(10);
         expect(markup).toContain('aria-label="마이크 미사용"');
     });
@@ -72,34 +70,34 @@ describe('MatchupTable', () => {
         const markup = renderToStaticMarkup(
             <MatchupTable
                 matchResult={matchResult}
+                onSlotClick={() => undefined}
                 swapSource={null}
-                displayMode="all"
-                interactive={false}
+                showAllRanks
             />,
         );
 
-        expect(markup).toContain('data-display-mode="all"');
-        expect(markup).toMatch(/data-rank-role="TANK"[\s\S]*data-rank-role="DPS"[\s\S]*data-rank-role="SUPPORT"/);
-        expect(countMatches(markup, /data-rank-role=/g)).toBe(30);
-        expect(countMatches(markup, /data-assigned="true"/g)).toBe(10);
-        expect(countMatches(markup, /ring-blue-400\/80/g)).toBe(2);
-        expect(countMatches(markup, /ring-orange-400\/80/g)).toBe(4);
-        expect(countMatches(markup, /ring-emerald-400\/80/g)).toBe(4);
+        expect(markup).toMatch(/title="탱커 [^"]+"[\s\S]*title="딜러 [^"]+"[\s\S]*title="힐러 [^"]+"/);
+        expect(countMatches(markup, /title="탱커 /g)).toBe(10);
+        expect(countMatches(markup, /title="딜러 /g)).toBe(10);
+        expect(countMatches(markup, /title="힐러 /g)).toBe(10);
+        expect(countMatches(markup, /· 현재 배정"/g)).toBe(10);
+        expect(countMatches(markup, /border-cyan-400\/40/g)).toBe(10);
+        expect(countMatches(markup, /<img /g)).toBe(0);
     });
 
     it('선호·비선호·미배치·마이크 상태와 긴 이름을 전체 티어 모드에 유지한다', () => {
         const markup = renderToStaticMarkup(
             <MatchupTable
                 matchResult={matchResult}
+                onSlotClick={() => undefined}
                 swapSource={null}
-                displayMode="all"
-                interactive={false}
+                showAllRanks
             />,
         );
 
-        expect(markup).toContain('탱커 브론즈 1 디비전, 선호 역할, 현재 배정 역할');
-        expect(markup).toContain('딜러 다이아 3 디비전, 비선호 역할, 현재 배정 역할');
-        expect(markup).toContain('지원 미배치');
+        expect(markup).toContain('title="탱커 브1★ · 현재 배정"');
+        expect(markup).toContain('title="딜러 다3? · 현재 배정"');
+        expect(markup).toContain('title="힐러 -');
         expect(markup).toContain('aria-label="마이크 미사용"');
         expect(markup).toContain('아주 긴 디스코드 닉네임 1');
         expect(markup).toContain('VeryLongBattleTag1#12345');
