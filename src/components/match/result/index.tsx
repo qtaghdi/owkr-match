@@ -1,10 +1,11 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import type { MatchResultData, Role, SwapSource, TeamResult } from '../../../types';
 import { CUSTOM_GAME_CODE } from '../../../constants';
 import { useCopyImage } from '../../../hooks/use-copy-image';
 import MatchupTable from './matchup-table';
 import CopyButton from './copy-button';
+import { DEFAULT_SHOW_ALL_TIERS, getMatchupDisplayModes } from './display-mode';
 
 interface MatchResultProps {
     matchResult: MatchResultData;
@@ -40,8 +41,10 @@ const MatchResult = ({
     isGeneratingAlternatives = false,
     isStale = false,
 }: MatchResultProps) => {
-    const captureRef = useRef<HTMLDivElement>(null);
-    const { copyStatus, handleCopyImage } = useCopyImage(captureRef);
+    const exportRef = useRef<HTMLDivElement>(null);
+    const [showAllTiers, setShowAllTiers] = useState(DEFAULT_SHOW_ALL_TIERS);
+    const displayModes = getMatchupDisplayModes(showAllTiers);
+    const { copyStatus, handleCopyImage } = useCopyImage(exportRef);
 
     return (
         <div className="space-y-4">
@@ -56,12 +59,11 @@ const MatchResult = ({
             )}
 
             <div
-                className={`space-y-4 transition-opacity duration-200 ${isStale ? 'opacity-40' : 'opacity-100'}`}
+                className={`relative space-y-4 transition-opacity duration-200 ${isStale ? 'opacity-40' : 'opacity-100'}`}
                 aria-disabled={isStale}
                 inert={isStale}
             >
-                {/* 이미지 캡처 영역 */}
-                <div ref={captureRef} className="bg-[#0b0c10] p-5 rounded-xl">
+                <div className="rounded-xl bg-[#0b0c10] p-5">
                     <div data-exclude-export className="flex items-center justify-center gap-2 mb-4 pb-3 border-b border-slate-800">
                         <span className="text-xs text-slate-500">커스텀 코드</span>
                         <span className="text-sm font-bold tracking-widest text-slate-200">{CUSTOM_GAME_CODE}</span>
@@ -70,6 +72,26 @@ const MatchResult = ({
                         matchResult={matchResult}
                         onSlotClick={onSlotClick}
                         swapSource={swapSource}
+                        displayMode={displayModes.screen}
+                    />
+                </div>
+
+                <div
+                    ref={exportRef}
+                    className="pointer-events-none absolute left-[-10000px] top-0 w-full rounded-xl bg-[#0b0c10] p-5"
+                    aria-hidden="true"
+                    inert
+                    data-export-render
+                >
+                    <div data-exclude-export className="mb-4 flex items-center justify-center gap-2 border-b border-slate-800 pb-3">
+                        <span className="text-xs text-slate-500">커스텀 코드</span>
+                        <span className="text-sm font-bold tracking-widest text-slate-200">{CUSTOM_GAME_CODE}</span>
+                    </div>
+                    <MatchupTable
+                        matchResult={matchResult}
+                        swapSource={null}
+                        displayMode={displayModes.export}
+                        interactive={false}
                     />
                 </div>
 
@@ -110,9 +132,32 @@ const MatchResult = ({
                 ) : null}
 
                 {/* 하단 컨트롤 (캡처 제외) */}
-                <div className="flex items-center justify-between gap-3 text-xs text-slate-500 px-1">
-                    <div>플레이어 두 명을 차례로 누르면 자리를 바꿀 수 있습니다</div>
-                    <CopyButton status={copyStatus} onClick={handleCopyImage} />
+                <div className="flex flex-col gap-2 px-1 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">플레이어 두 명을 차례로 누르면 자리를 바꿀 수 있습니다</div>
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                        <button
+                            type="button"
+                            role="switch"
+                            aria-checked={showAllTiers}
+                            onClick={() => setShowAllTiers(current => !current)}
+                            className="inline-flex min-h-10 touch-manipulation items-center gap-2 rounded-lg px-2.5 text-slate-300 transition-colors motion-reduce:transition-none hover:bg-slate-800/70 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70"
+                        >
+                            <span className="font-medium">전체 티어 표시</span>
+                            <span
+                                className={`relative h-5 w-9 shrink-0 rounded-full border transition-colors motion-reduce:transition-none ${
+                                    showAllTiers
+                                        ? 'border-cyan-400/70 bg-cyan-500/70'
+                                        : 'border-slate-600 bg-slate-800'
+                                }`}
+                                aria-hidden="true"
+                            >
+                                <span className={`absolute left-0.5 top-0.5 h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform motion-reduce:transition-none ${
+                                    showAllTiers ? 'translate-x-4' : 'translate-x-0'
+                                }`} />
+                            </span>
+                        </button>
+                        <CopyButton status={copyStatus} onClick={handleCopyImage} />
+                    </div>
                 </div>
             </div>
         </div>

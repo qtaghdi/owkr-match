@@ -16,7 +16,9 @@ export const PlayerIdentity = ({ player, align = 'left', layout = 'stacked' }: P
 
     if (layout === 'inline') {
         return (
-            <span className="flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-0.5 text-left">
+            <span className={`flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-0.5 ${
+                align === 'right' ? 'justify-end text-right' : 'text-left'
+            }`}>
                 <span className="break-words text-sm font-semibold text-slate-100">
                     {hasDistinctDiscordName ? discordName : player.name}
                 </span>

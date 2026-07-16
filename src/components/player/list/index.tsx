@@ -2,11 +2,9 @@ import { useRef, useState, type KeyboardEvent } from 'react';
 import { AlertCircle, Clock, MicOff, Pencil, Trash2, Users } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import type { Player } from '../../../types';
-import { formatRank } from '../../../constants';
-import { DamageIcon, SupportIcon, TankIcon } from '../../roles/icon';
 import { BattleTagCopyButton } from '../battle-tag-copy-button';
 import { PlayerIdentity } from '../player-identity';
-import RankBadge from './rank-badge';
+import RankBadge from '../rank-badge';
 
 interface PlayerListProps {
     participants: Player[];
@@ -67,19 +65,16 @@ const PlayerList = ({ participants, waitlist, onEditPlayer, onRemovePlayer, onCl
 
                     <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
                         <RankBadge
-                            icon={<TankIcon size={12} aria-hidden="true" />}
+                            role="TANK"
                             rank={player.tank}
-                            label={formatRank(player.tank)}
                         />
                         <RankBadge
-                            icon={<DamageIcon size={12} aria-hidden="true" />}
+                            role="DPS"
                             rank={player.dps}
-                            label={formatRank(player.dps)}
                         />
                         <RankBadge
-                            icon={<SupportIcon size={12} aria-hidden="true" />}
+                            role="SUPPORT"
                             rank={player.sup}
-                            label={formatRank(player.sup)}
                         />
                     </div>
                 </div>

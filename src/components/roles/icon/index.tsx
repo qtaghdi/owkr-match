@@ -1,11 +1,10 @@
-import React from 'react';
+import type { SVGProps } from 'react';
 
-interface IconProps {
-    className?: string;
+interface IconProps extends Omit<SVGProps<SVGSVGElement>, 'height' | 'width'> {
     size?: number;
 }
 
-export const TankIcon = ({ className = "", size = 20 }: IconProps) => (
+export const TankIcon = ({ className = '', size = 20, ...props }: IconProps) => (
     <svg
         width={size}
         height={size}
@@ -13,12 +12,13 @@ export const TankIcon = ({ className = "", size = 20 }: IconProps) => (
         fill="currentColor"
         className={className}
         xmlns="http://www.w3.org/2000/svg"
+        {...props}
     >
         <path d="M16 2.5C16 2.5 3.5 6.5 3.5 6.5C3.5 6.5 2 20 16 29.5C30 20 28.5 6.5 28.5 6.5C28.5 6.5 16 2.5 16 2.5Z" strokeWidth="0" />
     </svg>
 );
 
-export const DamageIcon = ({ className = "", size = 20 }: IconProps) => (
+export const DamageIcon = ({ className = '', size = 20, ...props }: IconProps) => (
     <svg
         width={size}
         height={size}
@@ -26,6 +26,7 @@ export const DamageIcon = ({ className = "", size = 20 }: IconProps) => (
         fill="currentColor"
         className={className}
         xmlns="http://www.w3.org/2000/svg"
+        {...props}
     >
         <path d="M6 26L11 6H15.5L10.5 26H6Z" />
         <path d="M13.5 26L18.5 6H23L18 26H13.5Z" />
@@ -33,7 +34,7 @@ export const DamageIcon = ({ className = "", size = 20 }: IconProps) => (
     </svg>
 );
 
-export const SupportIcon = ({ className = "", size = 20 }: IconProps) => (
+export const SupportIcon = ({ className = '', size = 20, ...props }: IconProps) => (
     <svg
         width={size}
         height={size}
@@ -41,6 +42,7 @@ export const SupportIcon = ({ className = "", size = 20 }: IconProps) => (
         fill="currentColor"
         className={className}
         xmlns="http://www.w3.org/2000/svg"
+        {...props}
     >
         <path d="M13 5H19V13H27V19H19V27H13V19H5V13H13V5Z" />
     </svg>

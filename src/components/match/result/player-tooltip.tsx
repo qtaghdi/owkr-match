@@ -18,8 +18,8 @@ const TooltipRow = ({ icon, label, rank }: TooltipRowProps) => (
         <div className="flex items-center gap-1.5">
             {icon}
             <span>{label}</span>
-            {rank.isPreferred && <Star size={10} className="fill-amber-400" />}
-            {rank.isAvoided && <Ban size={10} />}
+            {rank.isPreferred && <Star size={10} className="fill-amber-400" aria-hidden="true" />}
+            {rank.isAvoided && <Ban size={10} aria-hidden="true" />}
         </div>
         <span className={`font-mono ${rank.isPreferred ? 'font-semibold' : ''}`}>
             {formatRank(rank).replace('★', '').replace('?', '')}
@@ -50,17 +50,17 @@ const PlayerTooltip = ({ player, visible, showAbove = false, alignRight = false 
             </div>
             <div className="space-y-1.5">
                 <TooltipRow
-                    icon={<TankIcon size={14} />}
+                    icon={<TankIcon size={14} aria-hidden="true" />}
                     label="탱커"
                     rank={player.tank}
                 />
                 <TooltipRow
-                    icon={<DamageIcon size={14} />}
+                    icon={<DamageIcon size={14} aria-hidden="true" />}
                     label="딜러"
                     rank={player.dps}
                 />
                 <TooltipRow
-                    icon={<SupportIcon size={14} />}
+                    icon={<SupportIcon size={14} aria-hidden="true" />}
                     label="힐러"
                     rank={player.sup}
                 />
