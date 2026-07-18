@@ -61,7 +61,7 @@ export const removeItem = (key: string): void => {
  * @description 알려진 키들을 순회하며 만료된 항목을 제거한다.
  */
 export const cleanupExpired = (): void => {
-    const keysToCheck = ['owkr_players', 'owkr_result'];
+    const keysToCheck = ['owkr_players', 'owkr_result', 'owkr_participant_mentions'];
 
     keysToCheck.forEach(key => {
         const itemStr = localStorage.getItem(key);

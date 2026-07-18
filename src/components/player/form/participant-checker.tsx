@@ -5,13 +5,18 @@ import { compareMentionedParticipants } from '../../../utils/participant-check';
 
 interface ParticipantCheckerProps {
     players: Player[];
+    mentionText: string;
+    setMentionText: (value: string) => void;
 }
 
 /**
  * @description 디스코드 멘션 명단과 현재 입력된 플레이어를 대조해 미입력자를 보여준다.
  */
-const ParticipantChecker = ({ players }: ParticipantCheckerProps) => {
-    const [mentionText, setMentionText] = useState('');
+const ParticipantChecker = ({
+    players,
+    mentionText,
+    setMentionText,
+}: ParticipantCheckerProps) => {
     const [copyState, setCopyState] = useState<'idle' | 'success' | 'error'>('idle');
     const comparison = compareMentionedParticipants(mentionText, players);
     const totalCount = comparison.mentionedNames.length;

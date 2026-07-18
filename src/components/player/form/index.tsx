@@ -9,6 +9,8 @@ export type PlayerInputMode = 'discord' | 'manual' | 'mentions';
 
 interface PlayerFormProps {
     players: Player[];
+    participantMentions: string;
+    setParticipantMentions: (value: string) => void;
     inputs: {
         name: string;
         discordName: string;
@@ -38,6 +40,8 @@ interface PlayerFormProps {
  */
 const PlayerForm = ({
     players,
+    participantMentions,
+    setParticipantMentions,
     inputs,
     setInputs,
     addPlayer,
@@ -282,7 +286,11 @@ const PlayerForm = ({
                         )}
 
                         {mode === 'mentions' && (
-                            <ParticipantChecker players={players} />
+                            <ParticipantChecker
+                                players={players}
+                                mentionText={participantMentions}
+                                setMentionText={setParticipantMentions}
+                            />
                         )}
 
                         {/* Failed Parses Section */}

@@ -14,7 +14,8 @@ import MatchResult from './components/match/result';
 
 const STORAGE_KEYS = {
     PLAYERS: 'owkr_players',
-    RESULT: 'owkr_result'
+    RESULT: 'owkr_result',
+    PARTICIPANT_MENTIONS: 'owkr_participant_mentions',
 };
 
 interface StoredMatchState {
@@ -42,6 +43,9 @@ const App = () => {
     const [players, setPlayers] = useState<Player[]>(() => {
         return getWithExpiry<Player[]>(STORAGE_KEYS.PLAYERS) || [];
     });
+    const [participantMentions, setParticipantMentions] = useState(() => (
+        getWithExpiry<string>(STORAGE_KEYS.PARTICIPANT_MENTIONS) || ''
+    ));
     const [initialMatchState] = useState<StoredMatchState | null>(() => {
         const savedState = getWithExpiry<MatchResultData | StoredMatchState>(STORAGE_KEYS.RESULT);
         if (!savedState) return null;
@@ -89,6 +93,14 @@ const App = () => {
             removeItem(STORAGE_KEYS.PLAYERS);
         }
     }, [players]);
+
+    useEffect(() => {
+        if (participantMentions.trim()) {
+            setWithExpiry(STORAGE_KEYS.PARTICIPANT_MENTIONS, participantMentions);
+        } else {
+            removeItem(STORAGE_KEYS.PARTICIPANT_MENTIONS);
+        }
+    }, [participantMentions]);
 
     useEffect(() => {
         if (!isMounted.current) return;
@@ -349,6 +361,8 @@ const App = () => {
                     <div className="flex min-h-0 flex-col gap-4 xl:sticky xl:top-24 xl:h-[calc(100dvh-8rem)]">
                         <PlayerForm
                             players={players}
+                            participantMentions={participantMentions}
+                            setParticipantMentions={setParticipantMentions}
                             inputs={inputs}
                             setInputs={setInputs}
                             addPlayer={addPlayer}
