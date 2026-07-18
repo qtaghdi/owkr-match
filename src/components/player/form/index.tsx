@@ -1,11 +1,14 @@
 import React from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { AlertCircle, CheckCircle2, ChevronDown, ChevronUp, MessageSquareText, Pencil, Sparkles, User, X } from 'lucide-react';
+import { AlertCircle, CheckCircle2, ChevronDown, ChevronUp, ListChecks, MessageSquareText, Pencil, Sparkles, User, X } from 'lucide-react';
+import type { Player } from '../../../types';
 import TierSelect from './tier-select';
+import ParticipantChecker from './participant-checker';
 
-export type PlayerInputMode = 'discord' | 'manual';
+export type PlayerInputMode = 'discord' | 'manual' | 'mentions';
 
 interface PlayerFormProps {
+    players: Player[];
     inputs: {
         name: string;
         discordName: string;
@@ -34,6 +37,7 @@ interface PlayerFormProps {
  * @description 참가자 입력을 제공하고 성공 후에는 한 줄 요약으로 접힌다.
  */
 const PlayerForm = ({
+    players,
     inputs,
     setInputs,
     addPlayer,
@@ -136,7 +140,7 @@ const PlayerForm = ({
                         <div className="custom-scrollbar max-h-[calc(52dvh-3.5rem)] overflow-y-auto overscroll-contain px-4 pb-4 pr-3 xl:max-h-[calc(44dvh-3.5rem)]">
 
                             {/* Tab Navigation */}
-                            <div className="mb-4 flex gap-1 rounded-xl bg-surface p-1" role="group" aria-label="입력 방식">
+                            <div className="mb-4 grid grid-cols-3 gap-1 rounded-xl bg-surface p-1" role="group" aria-label="입력 방식">
                             <button
                                 type="button"
                                 aria-pressed={mode === 'discord'}
@@ -162,6 +166,19 @@ const PlayerForm = ({
                             >
                                 <User size={16} aria-hidden="true" />
                                 수동 입력
+                            </button>
+                            <button
+                                type="button"
+                                aria-pressed={mode === 'mentions'}
+                                onClick={() => onModeChange('mentions')}
+                                className={`flex min-h-10 touch-manipulation items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70 ${
+                                    mode === 'mentions'
+                                        ? 'bg-accent text-white shadow-lg shadow-accent/25'
+                                        : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+                                }`}
+                            >
+                                <ListChecks size={16} aria-hidden="true" />
+                                참여 대조
                             </button>
                         </div>
 
@@ -262,6 +279,10 @@ const PlayerForm = ({
                                     {isEditing ? '변경사항 저장' : '플레이어 추가'}
                                 </button>
                             </div>
+                        )}
+
+                        {mode === 'mentions' && (
+                            <ParticipantChecker players={players} />
                         )}
 
                         {/* Failed Parses Section */}

@@ -210,7 +210,6 @@ const App = () => {
 
     const handlePaste = () => {
         if (!pasteText.trim()) {
-            setIsInputCollapsed(false);
             showToast('error', '붙여넣을 디스코드 채팅이 없습니다.');
             return;
         }
@@ -260,14 +259,11 @@ const App = () => {
             || failedParses.length > 0
             || merged.unchangedDuplicateCount > 0
             || (merged.addedCount === 0 && merged.updatedDiscordNameCount === 0);
-        if (hasIssues) {
-            setIsInputCollapsed(false);
-        } else {
+        if (!hasIssues) {
             const identityUpdateSummary = merged.updatedDiscordNameCount > 0
                 ? ` · 디스코드 이름 ${merged.updatedDiscordNameCount}명 갱신`
                 : '';
             setInputSummary(`Discord 채팅 ${parsedPlayers.length}명 파싱 완료 · ${merged.addedCount}명 추가${identityUpdateSummary}`);
-            setIsInputCollapsed(true);
             setPasteText('');
             setEditingPlayerId(null);
             setInputs(createDefaultPlayerInputs());
@@ -352,6 +348,7 @@ const App = () => {
                     {/* Left Panel - Player Input */}
                     <div className="flex min-h-0 flex-col gap-4 xl:sticky xl:top-24 xl:h-[calc(100dvh-8rem)]">
                         <PlayerForm
+                            players={players}
                             inputs={inputs}
                             setInputs={setInputs}
                             addPlayer={addPlayer}

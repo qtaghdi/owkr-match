@@ -14,9 +14,9 @@ const rank: Rank = {
 const createPlayer = (id: number): Player => ({
     id,
     name: `Player${id}#1234`,
-    tank: rank,
-    dps: rank,
-    sup: rank,
+    tank: { ...rank, score: id === 1 ? 1700 : id === 6 ? 1400 : rank.score },
+    dps: { ...rank, score: id === 7 || id === 8 ? 1600 : rank.score },
+    sup: { ...rank },
 });
 
 const players = Array.from({ length: 10 }, (_, index) => createPlayer(index + 1));
@@ -57,5 +57,26 @@ describe('MatchResult', () => {
         expect(markup).toContain('탱·딜·힐 티어 표시');
         expect(markup).not.toContain('data-export-render');
         expect(markup).not.toContain('data-display-mode');
+    });
+
+    it('포지션별 티어 점수 차이를 표시하고 이미지 복사에서 제외한다', () => {
+        const markup = renderToStaticMarkup(
+            <MatchResult
+                matchResult={matchResult}
+                onSlotClick={vi.fn()}
+                swapSource={null}
+            />,
+        );
+
+        expect(markup).toContain('포지션별 티어 차이');
+        expect(markup).toContain('탱커');
+        expect(markup).toContain('1팀 +300점');
+        expect(markup).toContain('딜러');
+        expect(markup).toContain('2팀 +200점');
+        expect(markup).toContain('힐러');
+        expect(markup).toContain('동일');
+        expect(markup).toContain(
+            'data-exclude-export="true" class="mb-4 rounded-xl border border-slate-800',
+        );
     });
 });

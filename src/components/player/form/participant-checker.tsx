@@ -1,0 +1,116 @@
+import { useState } from 'react';
+import { Check, ClipboardCheck, Copy, UserRoundX } from 'lucide-react';
+import type { Player } from '../../../types';
+import { compareMentionedParticipants } from '../../../utils/participant-check';
+
+interface ParticipantCheckerProps {
+    players: Player[];
+}
+
+/**
+ * @description 디스코드 멘션 명단과 현재 입력된 플레이어를 대조해 미입력자를 보여준다.
+ */
+const ParticipantChecker = ({ players }: ParticipantCheckerProps) => {
+    const [mentionText, setMentionText] = useState('');
+    const [copyState, setCopyState] = useState<'idle' | 'success' | 'error'>('idle');
+    const comparison = compareMentionedParticipants(mentionText, players);
+    const totalCount = comparison.mentionedNames.length;
+    const completedCount = comparison.completedNames.length;
+
+    const handleCopyMissing = async () => {
+        const missingMentions = comparison.missingNames.map(name => `@${name}`).join(' ');
+
+        try {
+            await navigator.clipboard.writeText(missingMentions);
+            setCopyState('success');
+        } catch {
+            setCopyState('error');
+        }
+    };
+
+    return (
+        <div className="space-y-4 animate-fade-in">
+            <div>
+                <label htmlFor="participant-mentions" className="mb-3 flex items-center gap-2 text-sm text-slate-400">
+                    <ClipboardCheck size={14} className="text-cyan-300" aria-hidden="true" />
+                    공지의 참가자 멘션을 붙여넣으세요
+                </label>
+                <textarea
+                    id="participant-mentions"
+                    name="participant-mentions"
+                    autoComplete="off"
+                    spellCheck={false}
+                    className="input-base h-32 resize-none text-sm leading-relaxed"
+                    placeholder="**@상만** **@롤랑** **@민성** **@현욱**"
+                    value={mentionText}
+                    onChange={(event) => {
+                        setMentionText(event.target.value);
+                        setCopyState('idle');
+                    }}
+                />
+            </div>
+
+            {totalCount === 0 ? (
+                <div className="rounded-xl border border-slate-800 bg-surface/50 px-4 py-5 text-center">
+                    <p className="text-sm text-slate-400">멘션 명단을 붙여넣으면 바로 대조합니다</p>
+                    <p className="mt-1 text-xs text-slate-600">굵은 글씨가 포함된 디스코드 복사본도 인식합니다</p>
+                </div>
+            ) : (
+                <div className="space-y-3" aria-live="polite">
+                    <div className="grid grid-cols-3 gap-2">
+                        <div className="rounded-lg bg-surface px-2 py-2.5 text-center">
+                            <p className="text-[10px] text-slate-500">공지 인원</p>
+                            <p className="mt-0.5 text-sm font-semibold tabular-nums text-slate-200">{totalCount}명</p>
+                        </div>
+                        <div className="rounded-lg bg-emerald-500/10 px-2 py-2.5 text-center">
+                            <p className="text-[10px] text-emerald-400/80">입력 완료</p>
+                            <p className="mt-0.5 text-sm font-semibold tabular-nums text-emerald-300">{completedCount}명</p>
+                        </div>
+                        <div className="rounded-lg bg-amber-500/10 px-2 py-2.5 text-center">
+                            <p className="text-[10px] text-amber-400/80">미입력</p>
+                            <p className="mt-0.5 text-sm font-semibold tabular-nums text-amber-300">
+                                {comparison.missingNames.length}명
+                            </p>
+                        </div>
+                    </div>
+
+                    {comparison.missingNames.length > 0 ? (
+                        <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.07] p-3">
+                            <div className="mb-2.5 flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                    <UserRoundX size={14} className="text-amber-400" aria-hidden="true" />
+                                    <h3 className="text-xs font-semibold text-amber-300">아직 입력하지 않은 사람</h3>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={handleCopyMissing}
+                                    className="inline-flex min-h-8 shrink-0 touch-manipulation items-center gap-1 rounded-md px-2 text-[11px] font-medium text-amber-300 transition-colors hover:bg-amber-400/10 hover:text-amber-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70"
+                                >
+                                    {copyState === 'success' ? <Check size={12} aria-hidden="true" /> : <Copy size={12} aria-hidden="true" />}
+                                    {copyState === 'success' ? '복사됨' : copyState === 'error' ? '복사 실패' : '멘션 복사'}
+                                </button>
+                            </div>
+                            <div className="flex flex-wrap gap-1.5">
+                                {comparison.missingNames.map(name => (
+                                    <span
+                                        key={name}
+                                        className="rounded-md border border-amber-500/15 bg-surface/60 px-2 py-1 text-xs text-amber-100"
+                                    >
+                                        @{name}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-2 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-3">
+                            <Check size={15} className="shrink-0 text-emerald-400" aria-hidden="true" />
+                            <p className="text-sm font-medium text-emerald-200">참가자 전원이 입력을 완료했습니다</p>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default ParticipantChecker;
