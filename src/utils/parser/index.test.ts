@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseMultipleLines } from './index';
+import { parseLineToPlayer, parseMultipleLines } from './index';
 
 const RECENT_PARTICIPANTS = `
 **바비호바**역할 아이콘, 막시밀리앙 — **어제 오후 8:20**
@@ -83,6 +83,18 @@ describe('parseMultipleLines', () => {
             tank: { tier: 'PLATINUM', div: 3, isAvoided: true },
             dps: { tier: 'GOLD', div: 3, isAvoided: true },
             sup: { tier: 'MASTER', div: 4, isPreferred: true },
+        });
+    });
+});
+
+describe('parseLineToPlayer', () => {
+    it('두 포지션이 비선호이면 남은 포지션을 선호로 변경한다', () => {
+        const player = parseLineToPlayer('Tester#1234 다3? / 플2? / 골1');
+
+        expect(player).toMatchObject({
+            tank: { isPreferred: false, isAvoided: true },
+            dps: { isPreferred: false, isAvoided: true },
+            sup: { isPreferred: true, isAvoided: false },
         });
     });
 });

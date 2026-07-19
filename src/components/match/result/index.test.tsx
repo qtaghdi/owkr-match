@@ -78,5 +78,8 @@ describe('MatchResult', () => {
         expect(markup).toContain(
             'data-exclude-export="true" class="mb-4 rounded-xl border border-slate-800',
         );
+        expect(markup.indexOf('포지션별 티어 차이')).toBeLessThan(
+            markup.indexOf('data-capture-content="true"'),
+        );
     });
 });

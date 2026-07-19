@@ -1,6 +1,7 @@
 import React from 'react';
 import { Ban, Star, ChevronDown } from 'lucide-react';
 import { TIERS, TIER_LABEL_MAP } from '../../../constants';
+import { normalizeRolePreferences } from '../../../utils/role-preference';
 import { getTierImage } from '../../../utils/tier';
 
 interface TierSelectProps {
@@ -16,6 +17,26 @@ interface TierSelectProps {
     setInputs: React.Dispatch<React.SetStateAction<TierSelectProps['inputs'] & { name: string; discordName: string }>>;
 }
 
+type PlayerFormInputs = TierSelectProps['inputs'] & { name: string; discordName: string };
+
+const normalizeInputPreferences = (inputs: PlayerFormInputs): PlayerFormInputs => {
+    const preferences = normalizeRolePreferences({
+        TANK: { isPreferred: inputs.tPref, isAvoided: inputs.tAvoid },
+        DPS: { isPreferred: inputs.dPref, isAvoided: inputs.dAvoid },
+        SUPPORT: { isPreferred: inputs.sPref, isAvoided: inputs.sAvoid },
+    });
+
+    return {
+        ...inputs,
+        tPref: preferences.TANK.isPreferred,
+        tAvoid: preferences.TANK.isAvoided,
+        dPref: preferences.DPS.isPreferred,
+        dAvoid: preferences.DPS.isAvoided,
+        sPref: preferences.SUPPORT.isPreferred,
+        sAvoid: preferences.SUPPORT.isAvoided,
+    };
+};
+
 const TierSelect = ({ prefix, label, prefKey, avoidKey, inputs, setInputs }: TierSelectProps) => {
     const tierKey = `${prefix}Tier` as 'tTier' | 'dTier' | 'sTier';
     const divKey = `${prefix}Div` as 'tDiv' | 'dDiv' | 'sDiv';
@@ -24,11 +45,19 @@ const TierSelect = ({ prefix, label, prefKey, avoidKey, inputs, setInputs }: Tie
     const tierOptions = [...TIERS, 'UNRANKED'];
 
     const togglePref = () => {
-        setInputs(prev => ({ ...prev, [prefKey]: !prev[prefKey], [avoidKey]: false }));
+        setInputs(prev => normalizeInputPreferences({
+            ...prev,
+            [prefKey]: !prev[prefKey],
+            [avoidKey]: false,
+        }));
     };
 
     const toggleAvoid = () => {
-        setInputs(prev => ({ ...prev, [avoidKey]: !prev[avoidKey], [prefKey]: false }));
+        setInputs(prev => normalizeInputPreferences({
+            ...prev,
+            [avoidKey]: !prev[avoidKey],
+            [prefKey]: false,
+        }));
     };
 
     return (

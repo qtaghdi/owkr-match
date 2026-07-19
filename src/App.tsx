@@ -5,6 +5,7 @@ import { TIERS, getScore } from './constants';
 import { parseMultipleLines } from './utils/parser';
 import { recalculateMatchResult } from './utils/balance';
 import { isMatchResultStale, mergePlayersByBattleTag, syncMatchResultPlayerIdentities } from './utils/player';
+import { normalizePlayerRolePreferences } from './utils/role-preference';
 import { setWithExpiry, getWithExpiry, removeItem, cleanupExpired } from './utils/storage';
 import { useBalance } from './hooks/use-balance';
 import type { MatchResultData, Player, Role, SwapSource, Tier } from './types';
@@ -41,7 +42,8 @@ const getEditableDivision = (tier: string, division: number | string) => {
 
 const App = () => {
     const [players, setPlayers] = useState<Player[]>(() => {
-        return getWithExpiry<Player[]>(STORAGE_KEYS.PLAYERS) || [];
+        return (getWithExpiry<Player[]>(STORAGE_KEYS.PLAYERS) || [])
+            .map(normalizePlayerRolePreferences);
     });
     const [participantMentions, setParticipantMentions] = useState(() => (
         getWithExpiry<string>(STORAGE_KEYS.PARTICIPANT_MENTIONS) || ''
@@ -165,7 +167,7 @@ const App = () => {
             return;
         }
         const willJoinWaitlist = editingPlayerId === null && players.length >= 10;
-        const newPlayer: Player = {
+        const newPlayer = normalizePlayerRolePreferences({
             id: editingPlayerId ?? Date.now(),
             name: inputs.name.trim(),
             discordName: inputs.discordName.trim() || undefined,
@@ -173,7 +175,7 @@ const App = () => {
             dps: { tier: dTier, div: inputs.dDiv, score: getScore(TIERS.indexOf(dTier), inputs.dDiv), isPreferred: inputs.dPref, isAvoided: inputs.dAvoid },
             sup: { tier: sTier, div: inputs.sDiv, score: getScore(TIERS.indexOf(sTier), inputs.sDiv), isPreferred: inputs.sPref, isAvoided: inputs.sAvoid },
             noMic: existingPlayer?.noMic,
-        };
+        });
         const isEditing = editingPlayerId !== null;
         setPlayers(prev => isEditing
             ? prev.map(player => player.id === editingPlayerId ? newPlayer : player)

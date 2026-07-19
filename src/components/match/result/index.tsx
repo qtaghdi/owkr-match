@@ -117,7 +117,7 @@ const MatchResult = ({
                 inert={isStale}
             >
                 {/* 이미지 캡처 영역 */}
-                <div ref={captureRef} className="bg-[#0b0c10] p-5 rounded-xl">
+                <div className="bg-[#0b0c10] p-5 rounded-xl">
                     <div data-exclude-export className="flex items-center justify-center gap-2 mb-4 pb-3 border-b border-slate-800">
                         <span className="text-xs text-slate-500">커스텀 코드</span>
                         <span className="text-sm font-bold tracking-widest text-slate-200">{CUSTOM_GAME_CODE}</span>
@@ -154,12 +154,18 @@ const MatchResult = ({
                             ))}
                         </div>
                     </div>
-                    <MatchupTable
-                        matchResult={matchResult}
-                        onSlotClick={onSlotClick}
-                        swapSource={swapSource}
-                        showAllRanks={showAllRanks}
-                    />
+                    <div
+                        ref={captureRef}
+                        data-capture-content
+                        className="-mx-5 -mb-5 -mt-5 rounded-xl bg-[#0b0c10] p-5"
+                    >
+                        <MatchupTable
+                            matchResult={matchResult}
+                            onSlotClick={onSlotClick}
+                            swapSource={swapSource}
+                            showAllRanks={showAllRanks}
+                        />
+                    </div>
                 </div>
 
                 {/* 다른 조합 (캡처 제외) */}

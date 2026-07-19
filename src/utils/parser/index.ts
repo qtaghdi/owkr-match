@@ -1,5 +1,6 @@
 import type { Player, Rank, Role } from 'src/types';
 import { TIERS, getScore } from 'src/constants';
+import { normalizePlayerRolePreferences } from 'src/utils/role-preference';
 
 /**
  * @description 티어 문자열을 정규화해 TIERS 인덱스로 매핑한다.
@@ -387,7 +388,7 @@ export const parseLineToPlayer = (line: string, discordName?: string): Player | 
         return null;
     }
 
-    return {
+    return normalizePlayerRolePreferences({
         id: Date.now() + Math.random(),
         name,
         discordName: discordName?.trim() || undefined,
@@ -395,7 +396,7 @@ export const parseLineToPlayer = (line: string, discordName?: string): Player | 
         dps,
         sup,
         noMic
-    };
+    });
 };
 
 /**
