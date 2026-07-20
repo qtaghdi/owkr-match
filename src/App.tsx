@@ -1,14 +1,19 @@
 import { useState, useEffect, useRef } from 'react';
 import { Shuffle, RefreshCcw, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
 import { TIERS, getScore } from './constants';
 import { parseMultipleLines } from './utils/parser';
 import { recalculateMatchResult } from './utils/balance';
-import { isMatchResultStale, mergePlayersByBattleTag, syncMatchResultPlayerIdentities } from './utils/player';
+import {
+    isMatchResultStale,
+    reconcilePlayers,
+    syncMatchResultPlayerIdentities,
+} from './utils/player';
 import { normalizePlayerRolePreferences } from './utils/role-preference';
 import { setWithExpiry, getWithExpiry, removeItem, cleanupExpired } from './utils/storage';
 import { useBalance } from './hooks/use-balance';
 import type { MatchResultData, Player, Role, SwapSource, Tier } from './types';
+import type { RosterImportMode } from './utils/player';
 import PlayerForm, { type PlayerInputMode } from './components/player/form';
 import PlayerList from './components/player/list';
 import MatchResult from './components/match/result';
@@ -22,6 +27,22 @@ const STORAGE_KEYS = {
 interface StoredMatchState {
     result: MatchResultData;
     alternatives: MatchResultData[];
+}
+
+interface PendingRosterImport {
+    incoming: Player[];
+    failedLines: string[];
+}
+
+interface ToastAction {
+    label: string;
+    onClick: () => void;
+}
+
+interface ToastState {
+    type: 'success' | 'error';
+    message: string;
+    action?: ToastAction;
 }
 
 const normalizePlayerName = (name: string) => name.trim().toLowerCase();
@@ -42,8 +63,9 @@ const getEditableDivision = (tier: string, division: number | string) => {
 
 const App = () => {
     const [players, setPlayers] = useState<Player[]>(() => {
-        return (getWithExpiry<Player[]>(STORAGE_KEYS.PLAYERS) || [])
+        const savedPlayers = (getWithExpiry<Player[]>(STORAGE_KEYS.PLAYERS) || [])
             .map(normalizePlayerRolePreferences);
+        return reconcilePlayers([], savedPlayers, 'replace').players;
     });
     const [participantMentions, setParticipantMentions] = useState(() => (
         getWithExpiry<string>(STORAGE_KEYS.PARTICIPANT_MENTIONS) || ''
@@ -117,6 +139,7 @@ const App = () => {
     const [inputs, setInputs] = useState(createDefaultPlayerInputs);
     const [pasteText, setPasteText] = useState('');
     const [failedParses, setFailedParses] = useState<string[]>([]);
+    const [pendingRosterImport, setPendingRosterImport] = useState<PendingRosterImport | null>(null);
     const [inputMode, setInputMode] = useState<PlayerInputMode>('discord');
     const [editingPlayerId, setEditingPlayerId] = useState<number | null>(null);
     const [isInputCollapsed, setIsInputCollapsed] = useState(players.length > 0);
@@ -124,13 +147,26 @@ const App = () => {
         players.length > 0 ? `저장된 참가자 ${players.length}명 불러옴` : '',
     );
     const [swapSource, setSwapSource] = useState<SwapSource | null>(null);
-    const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+    const [toast, setToast] = useState<ToastState | null>(null);
     const toastTimerRef = useRef<number | null>(null);
 
-    const showToast = (type: 'success' | 'error', message: string) => {
-        setToast({ type, message });
+    const dismissToast = () => {
         if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
-        toastTimerRef.current = window.setTimeout(() => setToast(null), 2800);
+        toastTimerRef.current = null;
+        setToast(null);
+    };
+
+    const showToast = (
+        type: ToastState['type'],
+        message: string,
+        action?: ToastAction,
+    ) => {
+        setToast({ type, message, action });
+        if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+        toastTimerRef.current = window.setTimeout(
+            () => setToast(null),
+            action ? 8000 : 2800,
+        );
     };
 
     useEffect(() => {
@@ -138,6 +174,24 @@ const App = () => {
             if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
         };
     }, []);
+
+    useEffect(() => {
+        const hasUnsavedInput = Boolean(
+            pasteText.trim()
+            || inputs.name.trim()
+            || inputs.discordName.trim()
+            || pendingRosterImport,
+        );
+        if (!hasUnsavedInput) return;
+
+        const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+            event.preventDefault();
+            event.returnValue = '';
+        };
+
+        window.addEventListener('beforeunload', warnBeforeUnload);
+        return () => window.removeEventListener('beforeunload', warnBeforeUnload);
+    }, [inputs.discordName, inputs.name, pasteText, pendingRosterImport]);
 
     const addPlayer = () => {
         if (!inputs.name.trim()) {
@@ -222,66 +276,108 @@ const App = () => {
         setInputs(createDefaultPlayerInputs());
     };
 
+    const commitRosterImport = (
+        incoming: Player[],
+        failedLines: string[],
+        mode: RosterImportMode,
+    ) => {
+        const reconciled = reconcilePlayers(players, incoming, mode);
+        const waitlistCount = Math.max(reconciled.players.length - 10, 0);
+        const hasIssues = failedLines.length > 0 || failedParses.length > 0;
+        const syncedResult = result
+            ? syncMatchResultPlayerIdentities(result, reconciled.players)
+            : null;
+        const shouldClearMatchResult = syncedResult
+            ? isMatchResultStale(syncedResult, reconciled.players.slice(0, 10))
+            : false;
+
+        if (failedLines.length > 0) {
+            setFailedParses(previous => [...new Set([...previous, ...failedLines])]);
+        }
+        setPlayers(reconciled.players);
+        setResult(shouldClearMatchResult ? null : syncedResult);
+        setAlternatives(shouldClearMatchResult
+            ? []
+            : alternatives.map(alternative => (
+                syncMatchResultPlayerIdentities(alternative, reconciled.players)
+            )));
+        setSwapSource(null);
+        setPendingRosterImport(null);
+        setEditingPlayerId(null);
+        setInputs(createDefaultPlayerInputs());
+
+        const summaryParts = mode === 'replace'
+            ? [
+                `유지 ${reconciled.unchangedCount}명`,
+                `갱신 ${reconciled.updatedCount}명`,
+                `신규 ${reconciled.addedCount}명`,
+                `제외 ${reconciled.removedCount}명`,
+            ]
+            : [
+                `갱신 ${reconciled.updatedCount}명`,
+                `신규 ${reconciled.addedCount}명`,
+            ];
+        setInputSummary(`${mode === 'replace' ? '새 명단 적용' : '기존 명단에 추가'} · ${summaryParts.join(' · ')}`);
+
+        if (hasIssues) {
+            setIsInputCollapsed(false);
+        } else {
+            setIsInputCollapsed(true);
+            setPasteText('');
+        }
+
+        const waitlistMessage = waitlistCount > 0
+            ? ` · ${waitlistCount}명은 대기열`
+            : '';
+        const failedMessage = failedLines.length > 0
+            ? ` · ${failedLines.length}명 직접 확인 필요`
+            : '';
+        const rematchMessage = shouldClearMatchResult && reconciled.players.length >= 10
+            ? ' · 팀을 다시 배정해 주세요'
+            : '';
+        showToast(
+            failedLines.length > 0 ? 'error' : 'success',
+            `${mode === 'replace' ? '새 참여 명단을 적용했습니다' : '기존 명단에 추가했습니다'}${waitlistMessage}${failedMessage}${rematchMessage}`,
+        );
+    };
+
+    const applyPendingRosterImport = (mode: RosterImportMode) => {
+        if (!pendingRosterImport) return;
+        commitRosterImport(
+            pendingRosterImport.incoming,
+            pendingRosterImport.failedLines,
+            mode,
+        );
+    };
+
     const handlePaste = () => {
         if (!pasteText.trim()) {
             showToast('error', '붙여넣을 디스코드 채팅이 없습니다.');
             return;
         }
         const { players: parsedPlayers, failedLines } = parseMultipleLines(pasteText);
-        const merged = mergePlayersByBattleTag(players, parsedPlayers);
-        const waitlistCount = Math.max(merged.players.length - 10, 0);
 
-        if (merged.addedCount > 0 || merged.updatedDiscordNameCount > 0) {
-            setPlayers(merged.players);
-        }
-        if (merged.updatedDiscordNameCount > 0) {
-            setResult(current => current
-                ? syncMatchResultPlayerIdentities(current, merged.players)
-                : null);
-            setAlternatives(current => current.map(alternative => (
-                syncMatchResultPlayerIdentities(alternative, merged.players)
-            )));
-        }
-        if (failedLines.length > 0) {
-            setFailedParses(prev => [...new Set([...prev, ...failedLines])]);
-        }
-        const updateText = merged.updatedDiscordNameCount > 0
-            ? `, 디스코드 이름 ${merged.updatedDiscordNameCount}명 갱신`
-            : '';
-        const duplicateText = merged.unchangedDuplicateCount > 0
-            ? `, 중복 ${merged.unchangedDuplicateCount}명 제외`
-            : '';
-
-        if (merged.addedCount === 0 && merged.updatedDiscordNameCount === 0) {
-            if (merged.unchangedDuplicateCount > 0) {
-                showToast('error', '이미 추가된 플레이어만 포함되어 있습니다.');
-            } else {
-                showToast('error', '읽어낸 플레이어가 없습니다.');
+        if (parsedPlayers.length === 0) {
+            if (failedLines.length > 0) {
+                setFailedParses(previous => [...new Set([...previous, ...failedLines])]);
             }
-        } else if (merged.addedCount === 0) {
-            showToast('success', `${merged.updatedDiscordNameCount}명의 디스코드 이름을 갱신했습니다.`);
-        } else if (waitlistCount > 0) {
-            showToast('success', `${merged.addedCount}명 추가, ${waitlistCount}명은 대기열로 이동${updateText}${duplicateText}`);
-        } else if (failedLines.length > 0 || merged.unchangedDuplicateCount > 0) {
-            const failedText = failedLines.length > 0 ? `, ${failedLines.length}명은 직접 확인 필요` : '';
-            showToast('error', `${merged.addedCount}명 추가${updateText}${failedText}${duplicateText}`);
-        } else {
-            showToast('success', `${merged.addedCount}명을 추가했습니다${updateText}.`);
+            setIsInputCollapsed(false);
+            setPendingRosterImport(null);
+            showToast('error', '읽어낸 플레이어가 없습니다. 입력 형식을 확인해 주세요.');
+            return;
         }
 
-        const hasIssues = failedLines.length > 0
-            || failedParses.length > 0
-            || merged.unchangedDuplicateCount > 0
-            || (merged.addedCount === 0 && merged.updatedDiscordNameCount === 0);
-        if (!hasIssues) {
-            const identityUpdateSummary = merged.updatedDiscordNameCount > 0
-                ? ` · 디스코드 이름 ${merged.updatedDiscordNameCount}명 갱신`
-                : '';
-            setInputSummary(`Discord 채팅 ${parsedPlayers.length}명 파싱 완료 · ${merged.addedCount}명 추가${identityUpdateSummary}`);
-            setPasteText('');
-            setEditingPlayerId(null);
-            setInputs(createDefaultPlayerInputs());
+        if (players.length === 0) {
+            commitRosterImport(parsedPlayers, failedLines, 'replace');
+            return;
         }
+
+        setPendingRosterImport({ incoming: parsedPlayers, failedLines });
+        setIsInputCollapsed(false);
+        showToast(
+            failedLines.length > 0 ? 'error' : 'success',
+            `${parsedPlayers.length}명을 읽었습니다. 명단 변경 내용을 확인해 주세요.`,
+        );
     };
 
     const handleRunMatching = async () => {
@@ -328,10 +424,91 @@ const App = () => {
 
     // 참여자 제거 시 대기자 자동 승격 처리
     const handleRemovePlayer = (playerId: number) => {
+        const removedIndex = players.findIndex(player => player.id === playerId);
+        const removedPlayer = players[removedIndex];
+        if (!removedPlayer) return;
+        const previousResult = result;
+        const previousAlternatives = alternatives;
+        const previousSwapSource = swapSource;
+
         setPlayers(prev => prev.filter(p => p.id !== playerId));
+        if (removedIndex < 10) {
+            setResult(null);
+            setAlternatives([]);
+            setSwapSource(null);
+        }
         if (editingPlayerId === playerId) {
             handleCancelEdit();
         }
+        showToast(
+            'success',
+            `${removedPlayer.discordName ?? removedPlayer.name}을 명단에서 제외했습니다.`,
+            {
+                label: '실행 취소',
+                onClick: () => {
+                    setPlayers(current => {
+                        if (current.some(player => player.id === removedPlayer.id)) return current;
+                        const restored = [...current];
+                        restored.splice(Math.min(removedIndex, restored.length), 0, removedPlayer);
+                        return restored;
+                    });
+                    if (removedIndex < 10) {
+                        setResult(previousResult);
+                        setAlternatives(previousAlternatives);
+                        setSwapSource(previousSwapSource);
+                    }
+                },
+            },
+        );
+    };
+
+    const handleClearAll = () => {
+        if (players.length === 0) return;
+        const previousPlayers = players;
+        const previousInputSummary = inputSummary;
+        const previousInputCollapsed = isInputCollapsed;
+        const previousResult = result;
+        const previousAlternatives = alternatives;
+        const previousSwapSource = swapSource;
+
+        setPlayers([]);
+        setResult(null);
+        setAlternatives([]);
+        setPendingRosterImport(null);
+        setInputSummary('');
+        setIsInputCollapsed(false);
+        setSwapSource(null);
+        handleCancelEdit();
+        showToast('success', '전체 참여 명단을 비웠습니다.', {
+            label: '실행 취소',
+            onClick: () => {
+                setPlayers(previousPlayers);
+                setInputSummary(previousInputSummary);
+                setIsInputCollapsed(previousInputCollapsed);
+                setResult(previousResult);
+                setAlternatives(previousAlternatives);
+                setSwapSource(previousSwapSource);
+            },
+        });
+    };
+
+    const handleClearResult = () => {
+        if (!result) return;
+        const previousResult = result;
+        const previousAlternatives = alternatives;
+        const previousSwapSource = swapSource;
+
+        setResult(null);
+        setAlternatives([]);
+        setSwapSource(null);
+        showToast('success', '팀 배정 결과를 지웠습니다.', {
+            label: '실행 취소',
+            onClick: () => {
+                setResult(previousResult);
+                setAlternatives(previousAlternatives);
+                setSwapSource(previousSwapSource);
+            },
+        });
     };
 
     // 참여 명단 (첫 10명)과 대기 명단 (나머지) 분리
@@ -339,9 +516,19 @@ const App = () => {
     const waitlist = players.slice(10);
     const isReady = participants.length === 10;
     const isResultStale = result ? isMatchResultStale(result, participants) : false;
+    const rosterImportPreview = pendingRosterImport
+        ? reconcilePlayers(players, pendingRosterImport.incoming, 'replace')
+        : null;
 
     return (
+        <MotionConfig reducedMotion="user">
         <div className="min-h-screen bg-surface text-slate-200 font-sans">
+            <a
+                href="#main-content"
+                className="fixed left-4 top-3 z-[100] -translate-y-20 rounded-md bg-accent px-3 py-2 text-sm font-semibold text-white transition-transform focus:translate-y-0"
+            >
+                본문으로 건너뛰기
+            </a>
             {/* Header */}
             <header className="sticky top-0 z-50 bg-surface/80 backdrop-blur-xl border-b border-slate-800/50">
                 <div className="mx-auto flex h-16 max-w-[1600px] items-center px-4 md:px-8">
@@ -357,10 +544,14 @@ const App = () => {
             </header>
 
             {/* Main Content */}
-            <main className="mx-auto max-w-[1600px] px-4 py-6 md:px-8 md:py-8">
-                <div className="grid gap-6 xl:grid-cols-[minmax(400px,460px)_minmax(0,1fr)] xl:items-start">
+            <main
+                id="main-content"
+                tabIndex={-1}
+                className="mx-auto max-w-[1600px] scroll-mt-20 px-4 py-6 focus:outline-none md:px-8 md:py-8"
+            >
+                <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-[minmax(400px,460px)_minmax(0,1fr)] xl:items-start">
                     {/* Left Panel - Player Input */}
-                    <div className="flex min-h-0 flex-col gap-4 xl:sticky xl:top-24 xl:h-[calc(100dvh-8rem)]">
+                    <div className="flex min-h-0 min-w-0 flex-col gap-4 xl:sticky xl:top-24 xl:h-[calc(100dvh-8rem)]">
                         <PlayerForm
                             players={players}
                             participantMentions={participantMentions}
@@ -369,8 +560,21 @@ const App = () => {
                             setInputs={setInputs}
                             addPlayer={addPlayer}
                             pasteText={pasteText}
-                            setPasteText={setPasteText}
+                            onPasteTextChange={(value) => {
+                                setPasteText(value);
+                                setPendingRosterImport(null);
+                            }}
                             handlePaste={handlePaste}
+                            importPreview={rosterImportPreview ? {
+                                incomingCount: pendingRosterImport?.incoming.length ?? 0,
+                                failedCount: pendingRosterImport?.failedLines.length ?? 0,
+                                addedCount: rosterImportPreview.addedCount,
+                                updatedCount: rosterImportPreview.updatedCount,
+                                unchangedCount: rosterImportPreview.unchangedCount,
+                                removedCount: rosterImportPreview.removedCount,
+                            } : null}
+                            onApplyImport={applyPendingRosterImport}
+                            onCancelImport={() => setPendingRosterImport(null)}
                             failedParses={failedParses}
                             setFailedParses={setFailedParses}
                             isCollapsed={isInputCollapsed}
@@ -387,12 +591,7 @@ const App = () => {
                             waitlist={waitlist}
                             onEditPlayer={handleEditPlayer}
                             onRemovePlayer={handleRemovePlayer}
-                            onClearAll={() => {
-                                setPlayers([]);
-                                setInputSummary('');
-                                setIsInputCollapsed(false);
-                                handleCancelEdit();
-                            }}
+                            onClearAll={handleClearAll}
                         />
                     </div>
 
@@ -405,14 +604,10 @@ const App = () => {
                                 {result && (
                                     <button
                                         type="button"
-                                        onClick={() => {
-                                            setResult(null);
-                                            setAlternatives([]);
-                                            setSwapSource(null);
-                                        }}
+                                        onClick={handleClearResult}
                                         className="btn-ghost text-sm flex items-center gap-2"
                                     >
-                                        <RefreshCcw size={14} />
+                                        <RefreshCcw size={14} aria-hidden="true" />
                                         결과 지우기
                                     </button>
                                 )}
@@ -423,9 +618,9 @@ const App = () => {
                                     className="btn-primary flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
                                 >
                                     {isBalancing ? (
-                                        <Loader2 size={16} className="animate-spin" />
+                                        <Loader2 size={16} className="animate-spin" aria-hidden="true" />
                                     ) : (
-                                        <Shuffle size={16} />
+                                        <Shuffle size={16} aria-hidden="true" />
                                     )}
                                     {isReady
                                         ? isResultStale ? '다시 매칭' : '팀 자동 배정'
@@ -446,13 +641,13 @@ const App = () => {
                                 >
                                     {isBalancing ? (
                                         <div className="flex flex-col items-center gap-4">
-                                            <Loader2 size={40} className="text-accent animate-spin" />
+                                            <Loader2 size={40} className="animate-spin text-accent" aria-hidden="true" />
                                             <p className="text-slate-500 animate-pulse">최적의 조합을 계산 중…</p>
                                         </div>
                                     ) : (
                                         <div className="flex flex-col items-center gap-3">
                                             <div className="w-16 h-16 rounded-full bg-slate-800/50 flex items-center justify-center">
-                                                <Shuffle size={24} className="text-slate-600" />
+                                                <Shuffle size={24} className="text-slate-600" aria-hidden="true" />
                                             </div>
                                             <p className="text-slate-500 text-center">
                                                 {isReady
@@ -477,6 +672,7 @@ const App = () => {
                                         alternatives={alternatives}
                                         isStale={isResultStale}
                                         isGeneratingAlternatives={isBalancing}
+                                        onCancelSwap={() => setSwapSource(null)}
                                         onSelectAlternative={(idx) => {
                                             const alt = alternatives[idx];
                                             if (!alt) return;
@@ -499,7 +695,7 @@ const App = () => {
                         initial={{ opacity: 0, y: 16, scale: 0.96 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 12, scale: 0.96 }}
-                        className={`fixed bottom-6 left-1/2 z-[80] flex -translate-x-1/2 items-center gap-2 rounded-lg border px-4 py-3 text-sm font-medium shadow-2xl backdrop-blur ${
+                        className={`fixed bottom-[max(1.5rem,env(safe-area-inset-bottom))] left-1/2 z-[80] flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-2 rounded-lg border px-4 py-3 text-sm font-medium shadow-2xl backdrop-blur ${
                             toast.type === 'error'
                                 ? 'border-rose-500/30 bg-rose-950/90 text-rose-100'
                                 : 'border-emerald-500/30 bg-emerald-950/90 text-emerald-100'
@@ -507,12 +703,29 @@ const App = () => {
                         role="status"
                         aria-live="polite"
                     >
-                        {toast.type === 'error' ? <AlertCircle size={16} /> : <CheckCircle2 size={16} />}
-                        {toast.message}
+                        {toast.type === 'error'
+                            ? <AlertCircle size={16} aria-hidden="true" />
+                            : <CheckCircle2 size={16} aria-hidden="true" />}
+                        <span className="min-w-0 break-words">{toast.message}</span>
+                        {toast.action && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const action = toast.action;
+                                    if (!action) return;
+                                    dismissToast();
+                                    action.onClick();
+                                }}
+                                className="ml-2 min-h-8 shrink-0 rounded-md border border-current/30 px-2.5 text-xs font-semibold transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current"
+                            >
+                                {toast.action.label}
+                            </button>
+                        )}
                     </motion.div>
                 )}
             </AnimatePresence>
         </div>
+        </MotionConfig>
     );
 };
 

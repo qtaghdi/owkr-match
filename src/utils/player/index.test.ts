@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { MatchResultData, Player } from '../../types';
-import { isMatchResultStale, mergePlayersByBattleTag, syncMatchResultPlayerIdentities } from './index';
+import { isMatchResultStale, reconcilePlayers, syncMatchResultPlayerIdentities } from './index';
 
 const createPlayer = (id: number, name: string, discordName?: string): Player => ({
     id,
@@ -11,23 +11,76 @@ const createPlayer = (id: number, name: string, discordName?: string): Player =>
     sup: { tier: 'GOLD', div: 3, score: 2200, isPreferred: false, isAvoided: false },
 });
 
-describe('mergePlayersByBattleTag', () => {
-    it('기존 참가자의 디스코드 이름을 갱신하고 새 참가자는 추가한다', () => {
-        const existing = [createPlayer(1, 'Player#1234')];
+describe('reconcilePlayers', () => {
+    it('새 명단으로 교체하면서 기존 ID를 유지하고 빠진 참가자를 제외한다', () => {
+        const existing = [
+            createPlayer(1, 'Player#1234'),
+            createPlayer(2, 'Old#9999', '기존 참가자'),
+        ];
         const incoming = [
-            createPlayer(2, 'player#1234', '디스코드 이름'),
+            {
+                ...createPlayer(20, 'player#1234', '디스코드 이름'),
+                tank: { ...createPlayer(20, 'player#1234').tank, tier: 'PLATINUM', score: 2800 },
+            },
             createPlayer(3, 'New#5678', '새 참가자'),
         ];
 
-        const merged = mergePlayersByBattleTag(existing, incoming);
+        const reconciled = reconcilePlayers(existing, incoming, 'replace');
 
-        expect(merged).toMatchObject({
+        expect(reconciled).toMatchObject({
             addedCount: 1,
-            updatedDiscordNameCount: 1,
-            unchangedDuplicateCount: 0,
+            updatedCount: 1,
+            unchangedCount: 0,
+            removedCount: 1,
         });
-        expect(merged.players).toHaveLength(2);
-        expect(merged.players[0]).toMatchObject({ id: 1, discordName: '디스코드 이름' });
+        expect(reconciled.players).toHaveLength(2);
+        expect(reconciled.players[0]).toMatchObject({
+            id: 1,
+            discordName: '디스코드 이름',
+            tank: { tier: 'PLATINUM', score: 2800 },
+        });
+        expect(reconciled.players[1]).toMatchObject({ id: 3, name: 'New#5678' });
+    });
+
+    it('기존 명단에 추가하면 기존 순서를 유지하고 같은 배틀태그 정보만 갱신한다', () => {
+        const existing = [
+            createPlayer(1, 'Player#1234'),
+            createPlayer(2, 'Stay#9999', '유지'),
+        ];
+        const incoming = [
+            createPlayer(20, 'player#1234', '변경된 이름'),
+            createPlayer(3, 'New#5678', '새 참가자'),
+        ];
+
+        const reconciled = reconcilePlayers(existing, incoming, 'append');
+
+        expect(reconciled).toMatchObject({
+            addedCount: 1,
+            updatedCount: 1,
+            unchangedCount: 0,
+            removedCount: 0,
+        });
+        expect(reconciled.players.map((player) => player.name)).toEqual([
+            'player#1234',
+            'Stay#9999',
+            'New#5678',
+        ]);
+        expect(reconciled.players[0]).toMatchObject({ id: 1, discordName: '변경된 이름' });
+    });
+
+    it('새 명단에 디스코드 이름이 없으면 저장된 표시 이름을 유지한다', () => {
+        const existing = [createPlayer(1, 'Player#1234', '저장된 이름')];
+        const incoming = [createPlayer(20, 'player#1234')];
+
+        const reconciled = reconcilePlayers(existing, incoming, 'replace');
+
+        expect(reconciled).toMatchObject({
+            addedCount: 0,
+            updatedCount: 0,
+            unchangedCount: 1,
+            removedCount: 0,
+        });
+        expect(reconciled.players[0]).toMatchObject({ id: 1, discordName: '저장된 이름' });
     });
 });
 

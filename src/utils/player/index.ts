@@ -23,47 +23,114 @@ const getPlayerFingerprint = (player: Player): string => {
     ].join('|');
 };
 
-export interface PlayerMergeResult {
+export type RosterImportMode = 'replace' | 'append';
+
+export interface PlayerReconciliationResult {
     players: Player[];
     addedCount: number;
-    updatedDiscordNameCount: number;
-    unchangedDuplicateCount: number;
+    updatedCount: number;
+    unchangedCount: number;
+    removedCount: number;
 }
 
 /**
- * @description 배틀태그가 같은 기존 참가자는 디스코드 이름을 보강하고 새 참가자만 뒤에 추가한다.
+ * @description 중복 배틀태그를 제거하고 처음 등장한 참가자의 순서를 유지한다.
  */
-export const mergePlayersByBattleTag = (existing: Player[], incoming: Player[]): PlayerMergeResult => {
-    const players = [...existing];
-    const indexByBattleTag = new Map(
-        players.map((player, index) => [normalizeBattleTag(player.name), index]),
-    );
-    let addedCount = 0;
-    let updatedDiscordNameCount = 0;
-    let unchangedDuplicateCount = 0;
+const dedupePlayersByBattleTag = (players: Player[]): Player[] => {
+    const seenBattleTags = new Set<string>();
 
-    for (const player of incoming) {
+    return players.filter((player) => {
         const battleTag = normalizeBattleTag(player.name);
-        const existingIndex = indexByBattleTag.get(battleTag);
+        if (seenBattleTags.has(battleTag)) return false;
+        seenBattleTags.add(battleTag);
+        return true;
+    });
+};
 
-        if (existingIndex === undefined) {
-            indexByBattleTag.set(battleTag, players.length);
-            players.push(player);
+/**
+ * @description 기존 참가자의 안정적인 ID를 유지하면서 새 명단의 최신 프로필을 반영한다.
+ */
+const resolveKnownPlayer = (existing: Player, incoming: Player): Player => ({
+    ...incoming,
+    id: existing.id,
+    discordName: incoming.discordName?.trim() || existing.discordName?.trim() || undefined,
+});
+
+/**
+ * @description 붙여넣은 명단을 현재 명단과 비교해 교체 또는 추가 결과와 변경 요약을 만든다.
+ */
+export const reconcilePlayers = (
+    existing: Player[],
+    incoming: Player[],
+    mode: RosterImportMode,
+): PlayerReconciliationResult => {
+    const currentPlayers = dedupePlayersByBattleTag(existing);
+    const incomingPlayers = dedupePlayersByBattleTag(incoming);
+    const currentByBattleTag = new Map(
+        currentPlayers.map((player) => [normalizeBattleTag(player.name), player]),
+    );
+    const incomingBattleTags = new Set(
+        incomingPlayers.map((player) => normalizeBattleTag(player.name)),
+    );
+
+    let addedCount = 0;
+    let updatedCount = 0;
+    let unchangedCount = 0;
+
+    const resolvedIncoming = incomingPlayers.map((player) => {
+        const existingPlayer = currentByBattleTag.get(normalizeBattleTag(player.name));
+
+        if (!existingPlayer) {
             addedCount++;
-            continue;
+            return player;
         }
 
-        const discordName = player.discordName?.trim();
-        const existingPlayer = players[existingIndex];
-        if (discordName && discordName !== existingPlayer.discordName?.trim()) {
-            players[existingIndex] = { ...existingPlayer, discordName };
-            updatedDiscordNameCount++;
+        const resolvedPlayer = resolveKnownPlayer(existingPlayer, player);
+        if (getPlayerFingerprint(existingPlayer) === getPlayerFingerprint(resolvedPlayer)) {
+            unchangedCount++;
         } else {
-            unchangedDuplicateCount++;
+            updatedCount++;
+        }
+
+        return resolvedPlayer;
+    });
+
+    const removedCount = mode === 'replace'
+        ? currentPlayers.filter(
+            (player) => !incomingBattleTags.has(normalizeBattleTag(player.name)),
+        ).length
+        : 0;
+
+    if (mode === 'replace') {
+        return {
+            players: resolvedIncoming,
+            addedCount,
+            updatedCount,
+            unchangedCount,
+            removedCount,
+        };
+    }
+
+    const resolvedByBattleTag = new Map(
+        resolvedIncoming.map((player) => [normalizeBattleTag(player.name), player]),
+    );
+    const appendedPlayers = currentPlayers.map((player) => (
+        resolvedByBattleTag.get(normalizeBattleTag(player.name)) ?? player
+    ));
+
+    for (const player of resolvedIncoming) {
+        if (!currentByBattleTag.has(normalizeBattleTag(player.name))) {
+            appendedPlayers.push(player);
         }
     }
 
-    return { players, addedCount, updatedDiscordNameCount, unchangedDuplicateCount };
+    return {
+        players: appendedPlayers,
+        addedCount,
+        updatedCount,
+        unchangedCount,
+        removedCount,
+    };
 };
 
 const syncAssignmentIdentities = (

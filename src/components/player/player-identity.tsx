@@ -35,7 +35,7 @@ export const PlayerIdentity = ({ player, align = 'left', layout = 'stacked' }: P
     }
 
     return (
-        <span className={`flex min-w-0 flex-col ${align === 'right' ? 'items-end text-right' : 'items-start text-left'}`}>
+        <span className={`flex min-w-0 flex-1 flex-col ${align === 'right' ? 'items-end text-right' : 'items-start text-left'}`}>
             <span className="max-w-full truncate text-sm font-semibold text-slate-100">
                 {hasDistinctDiscordName ? discordName : player.name}
             </span>

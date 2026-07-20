@@ -97,6 +97,11 @@ describe('balancePlayers', () => {
         expect(recalculated.teamA.realScore).not.toBe(original.teamA.realScore);
         expect(recalculated.diff).toBe(Math.abs(recalculated.teamA.realScore - recalculated.teamB.realScore));
         expect(recalculated.metrics?.totalDiff).toBe(recalculated.diff);
+        expect(recalculated.metrics).toMatchObject({
+            preferenceViolations: expect.any(Number),
+            avoidedAssignments: expect.any(Number),
+            unrankedAssignments: expect.any(Number),
+        });
     });
 
     it('10명이 아니면 명확한 오류를 반환한다', () => {

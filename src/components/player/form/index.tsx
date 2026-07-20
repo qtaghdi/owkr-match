@@ -1,11 +1,35 @@
 import React from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { AlertCircle, CheckCircle2, ChevronDown, ChevronUp, ListChecks, MessageSquareText, Pencil, Sparkles, User, X } from 'lucide-react';
+import {
+    AlertCircle,
+    CheckCircle2,
+    ChevronDown,
+    ChevronUp,
+    ListChecks,
+    MessageSquareText,
+    Pencil,
+    RefreshCw,
+    Sparkles,
+    User,
+    UserMinus,
+    UserPlus,
+    X,
+} from 'lucide-react';
 import type { Player } from '../../../types';
+import type { RosterImportMode } from '../../../utils/player';
 import TierSelect from './tier-select';
 import ParticipantChecker from './participant-checker';
 
 export type PlayerInputMode = 'discord' | 'manual' | 'mentions';
+
+interface RosterImportPreview {
+    incomingCount: number;
+    failedCount: number;
+    addedCount: number;
+    updatedCount: number;
+    unchangedCount: number;
+    removedCount: number;
+}
 
 interface PlayerFormProps {
     players: Player[];
@@ -21,8 +45,11 @@ interface PlayerFormProps {
     setInputs: React.Dispatch<React.SetStateAction<PlayerFormProps['inputs']>>;
     addPlayer: () => void;
     pasteText: string;
-    setPasteText: React.Dispatch<React.SetStateAction<string>>;
+    onPasteTextChange: (value: string) => void;
     handlePaste: () => void;
+    importPreview: RosterImportPreview | null;
+    onApplyImport: (mode: RosterImportMode) => void;
+    onCancelImport: () => void;
     failedParses: string[];
     setFailedParses: React.Dispatch<React.SetStateAction<string[]>>;
     isCollapsed: boolean;
@@ -46,8 +73,11 @@ const PlayerForm = ({
     setInputs,
     addPlayer,
     pasteText,
-    setPasteText,
+    onPasteTextChange,
     handlePaste,
+    importPreview,
+    onApplyImport,
+    onCancelImport,
     failedParses,
     setFailedParses,
     isCollapsed,
@@ -141,7 +171,7 @@ const PlayerForm = ({
                         transition={animation}
                         className="overflow-hidden"
                     >
-                        <div className="custom-scrollbar max-h-[calc(52dvh-3.5rem)] overflow-y-auto overscroll-contain px-4 pb-4 pr-3 xl:max-h-[calc(44dvh-3.5rem)]">
+                        <div className="custom-scrollbar px-4 pb-4 pr-3 xl:max-h-[calc(44dvh-3.5rem)] xl:overflow-y-auto xl:overscroll-contain">
 
                             {/* Tab Navigation */}
                             <div className="mb-4 grid grid-cols-3 gap-1 rounded-xl bg-surface p-1" role="group" aria-label="입력 방식">
@@ -202,17 +232,106 @@ const PlayerForm = ({
                                         className="input-base h-40 resize-none font-mono text-sm leading-relaxed"
                                         placeholder={`예시:\nkimjungun#11853 다5/다1/다5\n학살#38848 다3/마4/다4\nAki#34981 미배치(골)/미배치(플)/플2\n재봉이#31207 그5!/마1!/마4`}
                                         value={pasteText}
-                                        onChange={(event) => setPasteText(event.target.value)}
+                                        onChange={(event) => onPasteTextChange(event.target.value)}
                                     />
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={handlePaste}
-                                    disabled={!pasteText.trim()}
-                                    className="btn-primary w-full disabled:cursor-not-allowed disabled:opacity-40"
-                                >
-                                    명단에 추가
-                                </button>
+                                {importPreview ? (
+                                    <div
+                                        className="rounded-xl border border-cyan-500/25 bg-cyan-500/[0.07] p-3.5"
+                                        role="region"
+                                        aria-label="참여 명단 변경 확인"
+                                    >
+                                        <div className="mb-3 flex items-start gap-2.5">
+                                            <ListChecks size={17} className="mt-0.5 shrink-0 text-cyan-300" aria-hidden="true" />
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-semibold text-cyan-100">
+                                                    가져올 {importPreview.incomingCount}명 확인
+                                                </p>
+                                                <p className="mt-1 text-xs leading-relaxed text-slate-400">
+                                                    새 명단으로 교체하면 붙여넣은 순서대로 참가자와 대기열을 다시 구성합니다.
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <dl className="grid grid-cols-2 gap-2 text-xs">
+                                            <div className="rounded-lg bg-surface/70 px-2.5 py-2">
+                                                <dt className="flex items-center gap-1 text-slate-500">
+                                                    <CheckCircle2 size={12} aria-hidden="true" />
+                                                    그대로 유지
+                                                </dt>
+                                                <dd className="mt-1 font-semibold tabular-nums text-slate-200">
+                                                    {importPreview.unchangedCount}명
+                                                </dd>
+                                            </div>
+                                            <div className="rounded-lg bg-surface/70 px-2.5 py-2">
+                                                <dt className="flex items-center gap-1 text-slate-500">
+                                                    <RefreshCw size={12} aria-hidden="true" />
+                                                    정보 갱신
+                                                </dt>
+                                                <dd className="mt-1 font-semibold tabular-nums text-cyan-200">
+                                                    {importPreview.updatedCount}명
+                                                </dd>
+                                            </div>
+                                            <div className="rounded-lg bg-surface/70 px-2.5 py-2">
+                                                <dt className="flex items-center gap-1 text-slate-500">
+                                                    <UserPlus size={12} aria-hidden="true" />
+                                                    새로 참여
+                                                </dt>
+                                                <dd className="mt-1 font-semibold tabular-nums text-emerald-300">
+                                                    {importPreview.addedCount}명
+                                                </dd>
+                                            </div>
+                                            <div className="rounded-lg bg-surface/70 px-2.5 py-2">
+                                                <dt className="flex items-center gap-1 text-slate-500">
+                                                    <UserMinus size={12} aria-hidden="true" />
+                                                    이번 명단에서 제외
+                                                </dt>
+                                                <dd className="mt-1 font-semibold tabular-nums text-amber-300">
+                                                    {importPreview.removedCount}명
+                                                </dd>
+                                            </div>
+                                        </dl>
+
+                                        {importPreview.failedCount > 0 && (
+                                            <p className="mt-2.5 text-xs text-amber-300">
+                                                읽지 못한 {importPreview.failedCount}명은 적용 후 직접 확인해야 합니다.
+                                            </p>
+                                        )}
+
+                                        <div className="mt-3 grid gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => onApplyImport('replace')}
+                                                className="btn-primary w-full"
+                                            >
+                                                새 명단으로 교체
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => onApplyImport('append')}
+                                                className="btn-ghost w-full border border-slate-700/70"
+                                            >
+                                                기존 명단에 추가
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={onCancelImport}
+                                                className="min-h-9 rounded-md text-xs text-slate-500 transition-colors hover:bg-white/5 hover:text-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/70"
+                                            >
+                                                변경 취소
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={handlePaste}
+                                        disabled={!pasteText.trim()}
+                                        className="btn-primary w-full disabled:cursor-not-allowed disabled:opacity-40"
+                                    >
+                                        명단 가져오기
+                                    </button>
+                                )}
                                 <p className="text-center text-xs text-slate-500">
                                     <span className="font-semibold text-amber-400">!</span>는 선호,
                                     {' '}<span className="font-semibold text-rose-400">?</span>는 비선호 포지션입니다
@@ -246,7 +365,7 @@ const PlayerForm = ({
                                         type="text"
                                         autoComplete="off"
                                         spellCheck={false}
-                                        placeholder="닉네임#1234"
+                                        placeholder="예: 닉네임#1234…"
                                         className="input-base"
                                         value={inputs.name}
                                         onChange={(event) => setInputs(prev => ({ ...prev, name: event.target.value }))}
@@ -261,7 +380,7 @@ const PlayerForm = ({
                                         type="text"
                                         autoComplete="off"
                                         spellCheck={false}
-                                        placeholder="서버에서 사용하는 닉네임"
+                                        placeholder="예: 서버에서 사용하는 닉네임…"
                                         className="input-base"
                                         value={inputs.discordName}
                                         onChange={(event) => setInputs(prev => ({ ...prev, discordName: event.target.value }))}
