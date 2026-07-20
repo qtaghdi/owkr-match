@@ -189,7 +189,7 @@ const PlayerList = ({ participants, waitlist, onEditPlayer, onRemovePlayer, onCl
                 </button>
             </div>
 
-            <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 max-xl:max-h-[32rem]">
+            <div className="custom-scrollbar min-h-0 flex-1 pr-1 xl:overflow-y-auto xl:overscroll-contain">
                 {activeTab === 'participants' ? (
                     <div
                         id="participants-panel"

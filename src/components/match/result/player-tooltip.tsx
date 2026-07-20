@@ -44,7 +44,7 @@ const PlayerTooltip = ({ player, visible, showAbove = false, alignRight = false 
     const alignClass = alignRight ? 'right-0' : 'left-0';
 
     return (
-        <div className={`absolute ${alignClass} ${positionClass} z-50 bg-surface-elevated border border-slate-700 rounded-lg p-3 shadow-xl min-w-[180px] animate-fade-in`}>
+        <div className={`absolute ${alignClass} ${positionClass} z-50 hidden min-w-[180px] animate-fade-in rounded-lg border border-slate-700 bg-surface-elevated p-3 shadow-xl sm:block`}>
             <div className="mb-2 border-b border-slate-700 pb-2">
                 <PlayerIdentity player={player} />
             </div>

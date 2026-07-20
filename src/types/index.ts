@@ -91,11 +91,17 @@ export interface SwapSource {
  * @property totalDiff - 팀 총점 차이
  * @property roleDiffs - 역할별 매치업 점수 차이 (탱크, 딜러, 힐러)
  * @property teamStdDevs - 각 팀의 내부 점수 표준편차
+ * @property preferenceViolations - 선호 역할이 있지만 다른 역할에 배정된 인원
+ * @property avoidedAssignments - 비선호 역할에 배정된 인원
+ * @property unrankedAssignments - 미배치 역할에 배정된 인원
  */
 export interface BalanceMetrics {
     totalDiff: number;
     roleDiffs: { tank: number; dps: number; support: number };
     teamStdDevs: [number, number];
+    preferenceViolations?: number;
+    avoidedAssignments?: number;
+    unrankedAssignments?: number;
 }
 
 /**

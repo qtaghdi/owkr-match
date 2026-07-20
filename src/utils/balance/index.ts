@@ -265,6 +265,9 @@ const buildMetrics = (teamA: AssignmentResult, teamB: AssignmentResult): Balance
         support: Math.round(Math.abs(teamA.roleScores.support - teamB.roleScores.support)),
     },
     teamStdDevs: [Math.round(teamA.teamStdDev), Math.round(teamB.teamStdDev)],
+    preferenceViolations: teamA.preferenceViolations + teamB.preferenceViolations,
+    avoidedAssignments: teamA.avoidedAssignments + teamB.avoidedAssignments,
+    unrankedAssignments: teamA.unrankedAssignments + teamB.unrankedAssignments,
 });
 
 /**

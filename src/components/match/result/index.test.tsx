@@ -40,6 +40,14 @@ const matchResult: MatchResultData = {
         realScore: 10000,
     },
     diff: 0,
+    metrics: {
+        totalDiff: 0,
+        roleDiffs: { tank: 20, dps: 40, support: 60 },
+        teamStdDevs: [120, 140],
+        preferenceViolations: 1,
+        avoidedAssignments: 0,
+        unrankedAssignments: 0,
+    },
 };
 
 describe('MatchResult', () => {
@@ -55,6 +63,9 @@ describe('MatchResult', () => {
         expect(markup).toContain('role="switch"');
         expect(markup).toContain('aria-checked="false"');
         expect(markup).toContain('탱·딜·힐 티어 표시');
+        expect(markup).toContain('밸런스 요약');
+        expect(markup).toContain('선호 역할 이탈');
+        expect(markup).toContain('비선호 배정');
         expect(markup).not.toContain('data-export-render');
         expect(markup).not.toContain('data-display-mode');
     });
@@ -81,5 +92,20 @@ describe('MatchResult', () => {
         expect(markup.indexOf('포지션별 티어 차이')).toBeLessThan(
             markup.indexOf('data-capture-content="true"'),
         );
+    });
+
+    it('교체할 플레이어를 선택하면 다음 행동과 취소 버튼을 바로 보여준다', () => {
+        const markup = renderToStaticMarkup(
+            <MatchResult
+                matchResult={matchResult}
+                onSlotClick={vi.fn()}
+                swapSource={{ teamIdx: 0, role: 'TANK', index: 0 }}
+                onCancelSwap={vi.fn()}
+            />,
+        );
+
+        expect(markup).toContain('Player1#1234</span> 선택됨 · 바꿀 플레이어를 선택하세요');
+        expect(markup).toContain('선택 취소');
+        expect(markup).toContain('aria-pressed="true"');
     });
 });
