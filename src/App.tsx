@@ -596,9 +596,9 @@ const App = () => {
                     </div>
 
                     {/* Right Panel - Match Result */}
-                    <div className="min-w-0">
+                    <div className="grid min-w-0 content-start gap-6">
                         {/* Action Bar */}
-                        <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+                        <div className="flex min-h-11 flex-wrap items-center justify-between gap-3">
                             <h2 className="text-lg font-semibold text-white">팀 배정 결과</h2>
                             <div className="flex gap-2">
                                 {result && (

@@ -1,5 +1,5 @@
 import { BarChart3, ShieldCheck } from 'lucide-react';
-import type { MatchResultData } from '../../../types';
+import type { MatchResultData, Role, TeamResult } from '../../../types';
 
 interface BalanceSummaryProps {
     matchResult: MatchResultData;
@@ -10,6 +10,22 @@ const NUMBER_FORMATTER = new Intl.NumberFormat('ko-KR');
 const formatScore = (score: number | undefined): string => (
     score === undefined ? '—' : NUMBER_FORMATTER.format(Math.round(score))
 );
+
+const ROLE_DIFFERENCE_DEFS = [
+    { role: 'TANK', label: '탱커' },
+    { role: 'DPS', label: '딜러' },
+    { role: 'SUPPORT', label: '힐러' },
+] as const;
+
+const getRoleAverageScore = (team: TeamResult, role: Role): number => {
+    const players = team.assignment[role];
+    const totalScore = players.reduce((sum, player) => {
+        const rank = role === 'TANK' ? player.tank : role === 'DPS' ? player.dps : player.sup;
+        return sum + rank.score;
+    }, 0);
+
+    return Math.round(totalScore / players.length);
+};
 
 /**
  * @description 팀 총점과 역할별 차이, 배정 예외를 한눈에 비교할 수 있게 보여준다.
@@ -22,11 +38,16 @@ const BalanceSummary = ({ matchResult }: BalanceSummaryProps) => {
         { label: '비선호 배정', value: metrics?.avoidedAssignments },
         { label: '미배치 역할', value: metrics?.unrankedAssignments },
     ];
-    const roleDiffs = [
-        { label: '탱커 차이', value: metrics?.roleDiffs.tank },
-        { label: '딜러 차이', value: metrics?.roleDiffs.dps },
-        { label: '힐러 차이', value: metrics?.roleDiffs.support },
-    ];
+    const roleDifferences = ROLE_DIFFERENCE_DEFS.map(({ role, label }) => {
+        const scoreDifference = getRoleAverageScore(teamA, role) - getRoleAverageScore(teamB, role);
+
+        return {
+            role,
+            label,
+            leadingTeam: scoreDifference > 0 ? '1팀' : scoreDifference < 0 ? '2팀' : null,
+            difference: Math.abs(scoreDifference),
+        };
+    });
 
     return (
         <section
@@ -53,11 +74,21 @@ const BalanceSummary = ({ matchResult }: BalanceSummaryProps) => {
                         {formatScore(totalDiff)}
                     </dd>
                 </div>
-                {roleDiffs.map(({ label, value }) => (
-                    <div key={label} className="rounded-lg bg-surface px-3 py-2">
+                {roleDifferences.map(({ role, label, leadingTeam, difference }) => (
+                    <div key={role} className="rounded-lg bg-surface px-3 py-2">
                         <dt className="text-[11px] text-slate-500">{label}</dt>
-                        <dd className="mt-1 font-mono text-sm tabular-nums text-slate-300">
-                            {formatScore(value)}
+                        <dd
+                            className={`mt-1 font-mono text-sm font-semibold tabular-nums ${
+                                leadingTeam === '1팀'
+                                    ? 'text-blue-300'
+                                    : leadingTeam === '2팀'
+                                        ? 'text-red-300'
+                                        : 'text-slate-400'
+                            }`}
+                        >
+                            {leadingTeam
+                                ? `${leadingTeam} +${formatScore(difference)}점`
+                                : '동일'}
                         </dd>
                     </div>
                 ))}

@@ -3,6 +3,7 @@ import type { RefObject } from 'react';
 import { toPng } from 'html-to-image';
 
 type CopyStatus = 'idle' | 'loading' | 'success' | 'error';
+const EXPORT_PADDING = 32;
 
 /**
  * @description html-to-image를 이용해 요소를 이미지로 캡처하고 클립보드에 복사하는 훅.
@@ -24,13 +25,32 @@ export const useCopyImage = (ref: RefObject<HTMLDivElement | null>) => {
 
     const handleCopyImage = useCallback(async () => {
         if (!ref.current) return;
+        const captureElement = ref.current;
+        const captureStyle = window.getComputedStyle(captureElement);
+        const contentWidth = captureElement.clientWidth
+            - Number.parseFloat(captureStyle.paddingLeft)
+            - Number.parseFloat(captureStyle.paddingRight);
+        const contentHeight = captureElement.clientHeight
+            - Number.parseFloat(captureStyle.paddingTop)
+            - Number.parseFloat(captureStyle.paddingBottom);
+        const exportWidth = contentWidth + (EXPORT_PADDING * 2);
+        const exportHeight = contentHeight + (EXPORT_PADDING * 2);
         setCopyStatus('loading');
+        captureElement.setAttribute('data-exporting', 'true');
 
         try {
-            const dataUrl = await toPng(ref.current, {
+            await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+
+            const dataUrl = await toPng(captureElement, {
                 backgroundColor: '#0b0c10',
+                width: exportWidth,
+                height: exportHeight,
                 pixelRatio: 3,
                 cacheBust: true,
+                style: {
+                    boxSizing: 'border-box',
+                    padding: `${EXPORT_PADDING}px`,
+                },
                 filter: (node) => !(node instanceof HTMLElement && (
                     node.hasAttribute('data-exclude-export')
                     || node.hasAttribute('data-html2canvas-ignore')
@@ -46,6 +66,7 @@ export const useCopyImage = (ref: RefObject<HTMLDivElement | null>) => {
             console.error(error);
             setCopyStatus('error');
         } finally {
+            captureElement.removeAttribute('data-exporting');
             resetStatusLater();
         }
     }, [ref, resetStatusLater]);

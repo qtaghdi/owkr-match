@@ -163,6 +163,11 @@
     @apply text-slate-500 hover:text-slate-300 border-b-2 border-transparent;
 }
 
+[data-exporting='true'] [data-exclude-export],
+[data-exporting='true'] [data-html2canvas-ignore='true'] {
+    display: none !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
     *,
     *::before,

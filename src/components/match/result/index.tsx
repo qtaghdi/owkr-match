@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react';
 import { AlertTriangle, ArrowLeftRight, Loader2, X } from 'lucide-react';
 import type { MatchResultData, Role, SwapSource, TeamResult } from '../../../types';
-import { CUSTOM_GAME_CODE } from '../../../constants';
 import { useCopyImage } from '../../../hooks/use-copy-image';
 import MatchupTable from './matchup-table';
 import CopyButton from './copy-button';
@@ -35,22 +34,6 @@ const getMatchResultKey = (result: MatchResultData): string => [
     ...result.teamB.assignment.SUPPORT,
 ].map((player) => player.id).join('-');
 
-const roleTierDifferenceDefs = [
-    { role: 'TANK', label: '탱커' },
-    { role: 'DPS', label: '딜러' },
-    { role: 'SUPPORT', label: '힐러' },
-] as const;
-
-const getRoleAverageScore = (team: TeamResult, role: Role): number => {
-    const players = team.assignment[role];
-    const totalScore = players.reduce((sum, player) => {
-        const rank = role === 'TANK' ? player.tank : role === 'DPS' ? player.dps : player.sup;
-        return sum + rank.score;
-    }, 0);
-
-    return Math.round(totalScore / players.length);
-};
-
 const getSelectedSwapPlayer = (
     matchResult: MatchResultData,
     swapSource: SwapSource | null,
@@ -73,17 +56,6 @@ const MatchResult = ({
     const captureRef = useRef<HTMLDivElement>(null);
     const [showAllRanks, setShowAllRanks] = useState(false);
     const { copyStatus, handleCopyImage } = useCopyImage(captureRef);
-    const roleTierDifferences = roleTierDifferenceDefs.map(({ role, label }) => {
-        const scoreDifference = getRoleAverageScore(matchResult.teamA, role)
-            - getRoleAverageScore(matchResult.teamB, role);
-
-        return {
-            role,
-            label,
-            leadingTeam: scoreDifference > 0 ? '1팀' : scoreDifference < 0 ? '2팀' : null,
-            difference: Math.abs(scoreDifference),
-        };
-    });
     const selectedSwapPlayer = getSelectedSwapPlayer(matchResult, swapSource);
 
     return (
@@ -175,55 +147,17 @@ const MatchResult = ({
                 inert={isStale}
             >
                 {/* 이미지 캡처 영역 */}
-                <div className="rounded-xl bg-[#0b0c10] p-2.5 sm:p-5">
-                    <div data-exclude-export className="flex items-center justify-center gap-2 mb-4 pb-3 border-b border-slate-800">
-                        <span className="text-xs text-slate-500">커스텀 코드</span>
-                        <span className="text-sm font-bold tracking-widest text-slate-200">{CUSTOM_GAME_CODE}</span>
-                    </div>
-                    <div
-                        data-exclude-export
-                        className="mb-4 rounded-xl border border-slate-800 bg-slate-950/30 px-3 py-3"
-                    >
-                        <div className="mb-2 flex items-center justify-between gap-3 px-1">
-                            <span className="text-xs font-semibold text-slate-300">포지션별 티어 차이</span>
-                            <span className="text-[10px] text-slate-600">역할 평균 점수 기준</span>
-                        </div>
-                        <div className="grid grid-cols-3 gap-2">
-                            {roleTierDifferences.map(({ role, label, leadingTeam, difference }) => (
-                                <div
-                                    key={role}
-                                    className="flex min-w-0 flex-col items-center gap-1 rounded-lg bg-slate-900/70 px-2 py-2"
-                                >
-                                    <span className="text-[11px] text-slate-500">{label}</span>
-                                    <span
-                                        className={`truncate text-xs font-semibold ${
-                                            leadingTeam === '1팀'
-                                                ? 'text-blue-300'
-                                                : leadingTeam === '2팀'
-                                                    ? 'text-red-300'
-                                                    : 'text-slate-400'
-                                        }`}
-                                    >
-                                        {leadingTeam
-                                            ? `${leadingTeam} +${difference.toLocaleString('ko-KR')}점`
-                                            : '동일'}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                    <div
-                        ref={captureRef}
-                        data-capture-content
-                        className="-mx-2.5 -mb-2.5 -mt-2.5 rounded-xl bg-[#0b0c10] p-2.5 sm:-mx-5 sm:-mb-5 sm:-mt-5 sm:p-5"
-                    >
-                        <MatchupTable
-                            matchResult={matchResult}
-                            onSlotClick={onSlotClick}
-                            swapSource={swapSource}
-                            showAllRanks={showAllRanks}
-                        />
-                    </div>
+                <div
+                    ref={captureRef}
+                    data-capture-content
+                    className="rounded-xl bg-[#0b0c10] py-2.5 sm:py-5"
+                >
+                    <MatchupTable
+                        matchResult={matchResult}
+                        onSlotClick={onSlotClick}
+                        swapSource={swapSource}
+                        showAllRanks={showAllRanks}
+                    />
                 </div>
 
                 {/* 다른 조합 (캡처 제외) */}

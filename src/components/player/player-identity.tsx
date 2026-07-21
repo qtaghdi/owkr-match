@@ -4,12 +4,13 @@ interface PlayerIdentityProps {
     player: Player;
     align?: 'left' | 'right';
     layout?: 'stacked' | 'inline';
+    grow?: boolean;
 }
 
 /**
  * @description 디스코드 표시 이름을 우선 보여주고 다른 배틀태그를 함께 표시한다.
  */
-export const PlayerIdentity = ({ player, align = 'left', layout = 'stacked' }: PlayerIdentityProps) => {
+export const PlayerIdentity = ({ player, align = 'left', layout = 'stacked', grow = true }: PlayerIdentityProps) => {
     const discordName = player.discordName?.trim();
     const hasDistinctDiscordName = Boolean(discordName)
         && discordName?.localeCompare(player.name, undefined, { sensitivity: 'accent' }) !== 0;
@@ -35,7 +36,9 @@ export const PlayerIdentity = ({ player, align = 'left', layout = 'stacked' }: P
     }
 
     return (
-        <span className={`flex min-w-0 flex-1 flex-col ${align === 'right' ? 'items-end text-right' : 'items-start text-left'}`}>
+        <span className={`flex min-w-0 flex-col ${grow ? 'flex-1' : ''} ${
+            align === 'right' ? 'items-end text-right' : 'items-start text-left'
+        }`}>
             <span className="max-w-full truncate text-sm font-semibold text-slate-100">
                 {hasDistinctDiscordName ? discordName : player.name}
             </span>
