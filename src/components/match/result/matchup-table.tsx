@@ -35,7 +35,7 @@ const PlayerStatusIndicators = ({
     noMic,
     className = '',
 }: PlayerStatusIndicatorsProps) => (
-    <div className={`flex shrink-0 items-center justify-end gap-1 ${className}`}>
+    <div className={`flex shrink-0 items-center gap-1 ${className}`}>
         {isPreferred && (
             <span className="inline-flex text-yellow-400" aria-label="선호 역할" title="선호 역할">
                 <Star size={12} className="fill-current" aria-hidden="true" />
@@ -53,6 +53,42 @@ const PlayerStatusIndicators = ({
         )}
     </div>
 );
+
+interface PlayerIdentityWithStatusProps {
+    player: Player;
+    rank: ReturnType<typeof getRankInfo>;
+    align: 'left' | 'right';
+    className?: string;
+}
+
+/**
+ * @description 상태 아이콘을 1팀은 이름 왼쪽, 2팀은 이름 오른쪽에 붙여 이름 기준선을 유지한다.
+ */
+const PlayerIdentityWithStatus = ({
+    player,
+    rank,
+    align,
+    className = '',
+}: PlayerIdentityWithStatusProps) => {
+    const statusIndicators = (
+        <PlayerStatusIndicators
+            isPreferred={rank.isPreferred}
+            isAvoided={rank.isAvoided}
+            noMic={player.noMic}
+        />
+    );
+
+    return (
+        <div className={`flex min-w-0 items-center gap-1.5 ${
+            align === 'right' ? 'justify-end' : 'justify-start'
+        } ${className}`}>
+            {align === 'right' ? statusIndicators : null}
+            <PlayerIdentity player={player} align={align} grow={false} />
+            {align === 'left' ? statusIndicators : null}
+            <BattleTagCopyButton battleTag={player.name} className="pointer-events-auto" />
+        </div>
+    );
+};
 
 const getRoleIcon = (role: Role) => {
     switch (role) {
@@ -138,7 +174,7 @@ const MatchupTable = ({ matchResult, onSlotClick, swapSource, showAllRanks = fal
     return (
         <div className="space-y-1.5">
             {/* 팀 헤더 */}
-            <div className="flex items-center mb-4 px-1">
+            <div className="mb-4 flex items-center px-3.5">
                 <div className="flex-1 flex items-center gap-2">
                     <span className="font-bold text-lg text-blue-400">1팀</span>
                     <span className="text-xs px-2 py-1 rounded font-semibold bg-orange-500/20 text-orange-300">선공격</span>
@@ -191,31 +227,25 @@ const MatchupTable = ({ matchResult, onSlotClick, swapSource, showAllRanks = fal
                                 <div className="pointer-events-none relative z-10 flex w-full min-w-0 flex-col px-2.5 py-2.5 text-right sm:px-4 sm:py-3">
                                     {showAllRanks ? (
                                         <>
-                                            <div className="flex w-full min-w-0 items-center justify-end gap-1.5 sm:gap-2">
-                                                <PlayerIdentity player={row.playerA} align="right" />
-                                                <BattleTagCopyButton battleTag={row.playerA.name} className="pointer-events-auto" />
-                                                <PlayerStatusIndicators
-                                                    isPreferred={rankA.isPreferred}
-                                                    isAvoided={rankA.isAvoided}
-                                                    noMic={row.playerA.noMic}
-                                                    className="hidden w-10 sm:flex"
-                                                />
-                                            </div>
+                                            <PlayerIdentityWithStatus
+                                                player={row.playerA}
+                                                rank={rankA}
+                                                align="right"
+                                                className="w-full"
+                                            />
                                             <div className="mt-1.5 w-full">
                                                 <PlayerRankSummary player={row.playerA} assignedRole={row.role} align="right" />
                                             </div>
-                                            <PlayerStatusIndicators
-                                                isPreferred={rankA.isPreferred}
-                                                isAvoided={rankA.isAvoided}
-                                                noMic={row.playerA.noMic}
-                                                className="mt-1 w-full sm:hidden"
-                                            />
                                         </>
                                     ) : (
                                         <>
                                             <div className="hidden w-full min-w-0 items-center justify-end gap-2 sm:flex">
-                                                <PlayerIdentity player={row.playerA} align="right" />
-                                                <BattleTagCopyButton battleTag={row.playerA.name} className="pointer-events-auto" />
+                                                <PlayerIdentityWithStatus
+                                                    player={row.playerA}
+                                                    rank={rankA}
+                                                    align="right"
+                                                    className="flex-1"
+                                                />
                                                 <div className="flex shrink-0 items-center gap-1.5">
                                                     {tierImgA && (
                                                         <img src={tierImgA} alt={rankA.tier} width={24} height={24} className="h-6 w-6 object-contain"
@@ -225,23 +255,14 @@ const MatchupTable = ({ matchResult, onSlotClick, swapSource, showAllRanks = fal
                                                         {formatRank(rankA).replace('★', '').replace('?', '')}
                                                     </span>
                                                 </div>
-                                                <PlayerStatusIndicators
-                                                    isPreferred={rankA.isPreferred}
-                                                    isAvoided={rankA.isAvoided}
-                                                    noMic={row.playerA.noMic}
-                                                    className="w-10"
-                                                />
                                             </div>
-                                            <div className="flex w-full min-w-0 items-center justify-end gap-1.5 sm:hidden">
-                                                <PlayerIdentity player={row.playerA} align="right" />
-                                                <BattleTagCopyButton battleTag={row.playerA.name} className="pointer-events-auto" />
-                                            </div>
+                                            <PlayerIdentityWithStatus
+                                                player={row.playerA}
+                                                rank={rankA}
+                                                align="right"
+                                                className="w-full sm:hidden"
+                                            />
                                             <div className="mt-1 flex w-full items-center justify-end gap-1.5 sm:hidden">
-                                                <PlayerStatusIndicators
-                                                    isPreferred={rankA.isPreferred}
-                                                    isAvoided={rankA.isAvoided}
-                                                    noMic={row.playerA.noMic}
-                                                />
                                                 <div className="flex shrink-0 items-center gap-1.5">
                                                     {tierImgA && (
                                                         <img src={tierImgA} alt={rankA.tier} width={20} height={20} className="h-5 w-5 object-contain"
@@ -289,25 +310,15 @@ const MatchupTable = ({ matchResult, onSlotClick, swapSource, showAllRanks = fal
                                 <div className="pointer-events-none relative z-10 flex w-full min-w-0 flex-col px-2.5 py-2.5 text-left sm:px-4 sm:py-3">
                                     {showAllRanks ? (
                                         <>
-                                            <div className="flex w-full min-w-0 items-center gap-1.5 sm:gap-2">
-                                                <PlayerIdentity player={row.playerB} />
-                                                <BattleTagCopyButton battleTag={row.playerB.name} className="pointer-events-auto" />
-                                                <PlayerStatusIndicators
-                                                    isPreferred={rankB.isPreferred}
-                                                    isAvoided={rankB.isAvoided}
-                                                    noMic={row.playerB.noMic}
-                                                    className="ml-auto hidden w-10 sm:flex"
-                                                />
-                                            </div>
+                                            <PlayerIdentityWithStatus
+                                                player={row.playerB}
+                                                rank={rankB}
+                                                align="left"
+                                                className="w-full"
+                                            />
                                             <div className="mt-1.5 w-full">
                                                 <PlayerRankSummary player={row.playerB} assignedRole={row.role} align="left" />
                                             </div>
-                                            <PlayerStatusIndicators
-                                                isPreferred={rankB.isPreferred}
-                                                isAvoided={rankB.isAvoided}
-                                                noMic={row.playerB.noMic}
-                                                className="mt-1 w-full justify-start sm:hidden"
-                                            />
                                         </>
                                     ) : (
                                         <>
@@ -315,25 +326,25 @@ const MatchupTable = ({ matchResult, onSlotClick, swapSource, showAllRanks = fal
                                                 <div className="flex shrink-0 items-center gap-1.5">
                                                     <span className="w-10 text-right font-mono text-sm text-slate-200">
                                                         {formatRank(rankB).replace('★', '').replace('?', '')}
-                                                </span>
-                                                {tierImgB && (
-                                                    <img src={tierImgB} alt={rankB.tier} width={24} height={24} className="h-6 w-6 object-contain"
-                                                        onError={(e) => e.currentTarget.style.display = 'none'} />
+                                                    </span>
+                                                    {tierImgB && (
+                                                        <img src={tierImgB} alt={rankB.tier} width={24} height={24} className="h-6 w-6 object-contain"
+                                                            onError={(e) => e.currentTarget.style.display = 'none'} />
                                                     )}
                                                 </div>
-                                                <PlayerIdentity player={row.playerB} />
-                                                <BattleTagCopyButton battleTag={row.playerB.name} className="pointer-events-auto" />
-                                                <PlayerStatusIndicators
-                                                    isPreferred={rankB.isPreferred}
-                                                    isAvoided={rankB.isAvoided}
-                                                    noMic={row.playerB.noMic}
-                                                    className="ml-auto w-10"
+                                                <PlayerIdentityWithStatus
+                                                    player={row.playerB}
+                                                    rank={rankB}
+                                                    align="left"
+                                                    className="flex-1"
                                                 />
                                             </div>
-                                            <div className="flex w-full min-w-0 items-center gap-1.5 sm:hidden">
-                                                <PlayerIdentity player={row.playerB} />
-                                                <BattleTagCopyButton battleTag={row.playerB.name} className="pointer-events-auto" />
-                                            </div>
+                                            <PlayerIdentityWithStatus
+                                                player={row.playerB}
+                                                rank={rankB}
+                                                align="left"
+                                                className="w-full sm:hidden"
+                                            />
                                             <div className="mt-1 flex w-full items-center gap-1.5 sm:hidden">
                                                 <div className="flex shrink-0 items-center gap-1.5">
                                                     <span className="font-mono text-xs text-slate-200">
@@ -344,12 +355,6 @@ const MatchupTable = ({ matchResult, onSlotClick, swapSource, showAllRanks = fal
                                                             onError={(e) => e.currentTarget.style.display = 'none'} />
                                                     )}
                                                 </div>
-                                                <PlayerStatusIndicators
-                                                    isPreferred={rankB.isPreferred}
-                                                    isAvoided={rankB.isAvoided}
-                                                    noMic={row.playerB.noMic}
-                                                    className="ml-auto"
-                                                />
                                             </div>
                                         </>
                                     )}

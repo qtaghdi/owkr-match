@@ -1,11 +1,6 @@
 import { Rank, Tier } from "../types";
 
 /**
- * @description 커스텀 게임 코드.
- */
-export const CUSTOM_GAME_CODE = 'SW9P0';
-
-/**
  * @description 티어 순서를 점수 계산 기준으로 고정한 목록.
  */
 export const TIERS: Tier[] = [

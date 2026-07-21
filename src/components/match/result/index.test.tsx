@@ -70,7 +70,7 @@ describe('MatchResult', () => {
         expect(markup).not.toContain('data-display-mode');
     });
 
-    it('포지션별 티어 점수 차이를 표시하고 이미지 복사에서 제외한다', () => {
+    it('역할별 티어 점수 차이를 밸런스 요약에 함께 표시한다', () => {
         const markup = renderToStaticMarkup(
             <MatchResult
                 matchResult={matchResult}
@@ -79,19 +79,15 @@ describe('MatchResult', () => {
             />,
         );
 
-        expect(markup).toContain('포지션별 티어 차이');
+        expect(markup).not.toContain('포지션별 티어 차이');
         expect(markup).toContain('탱커');
         expect(markup).toContain('1팀 +300점');
         expect(markup).toContain('딜러');
         expect(markup).toContain('2팀 +200점');
         expect(markup).toContain('힐러');
         expect(markup).toContain('동일');
-        expect(markup).toContain(
-            'data-exclude-export="true" class="mb-4 rounded-xl border border-slate-800',
-        );
-        expect(markup.indexOf('포지션별 티어 차이')).toBeLessThan(
-            markup.indexOf('data-capture-content="true"'),
-        );
+        expect(markup.match(/밸런스 요약/g)).toHaveLength(1);
+        expect(markup).toContain('data-capture-content="true"');
     });
 
     it('교체할 플레이어를 선택하면 다음 행동과 취소 버튼을 바로 보여준다', () => {
