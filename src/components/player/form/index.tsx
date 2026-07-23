@@ -7,6 +7,7 @@ import {
     ChevronUp,
     ListChecks,
     MessageSquareText,
+    MicOff,
     Pencil,
     RefreshCw,
     Sparkles,
@@ -38,6 +39,7 @@ interface PlayerFormProps {
     inputs: {
         name: string;
         discordName: string;
+        noMic: boolean;
         tTier: string; tDiv: string; tPref: boolean; tAvoid: boolean;
         dTier: string; dDiv: string; dPref: boolean; dAvoid: boolean;
         sTier: string; sDiv: string; sPref: boolean; sAvoid: boolean;
@@ -386,6 +388,25 @@ const PlayerForm = ({
                                         onChange={(event) => setInputs(prev => ({ ...prev, discordName: event.target.value }))}
                                     />
                                 </div>
+
+                                <label
+                                    htmlFor="no-mic"
+                                    className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-slate-700/70 bg-surface/60 px-3 py-2.5 transition-colors hover:border-slate-600 hover:bg-white/[0.03]"
+                                >
+                                    <input
+                                        id="no-mic"
+                                        name="no-mic"
+                                        type="checkbox"
+                                        checked={inputs.noMic}
+                                        onChange={(event) => setInputs(prev => ({ ...prev, noMic: event.target.checked }))}
+                                        className="h-4 w-4 shrink-0 accent-rose-500"
+                                    />
+                                    <MicOff size={16} className={inputs.noMic ? 'text-rose-400' : 'text-slate-500'} aria-hidden="true" />
+                                    <span className="min-w-0">
+                                        <span className="block text-sm font-medium text-slate-200">마이크 미사용</span>
+                                        <span className="block text-xs text-slate-500">음성 채팅에 참여하지 않는 참가자라면 선택하세요</span>
+                                    </span>
+                                </label>
 
                                 <div className="space-y-3">
                                     <TierSelect prefix="t" label="탱커" prefKey="tPref" avoidKey="tAvoid" inputs={inputs} setInputs={setInputs} />

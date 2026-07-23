@@ -50,6 +50,7 @@ const normalizePlayerName = (name: string) => name.trim().toLowerCase();
 const createDefaultPlayerInputs = () => ({
     name: '',
     discordName: '',
+    noMic: false,
     tTier: 'DIAMOND', tDiv: '3', tPref: false, tAvoid: false,
     dTier: 'DIAMOND', dDiv: '3', dPref: false, dAvoid: false,
     sTier: 'PLATINUM', sDiv: '3', sPref: false, sAvoid: false
@@ -180,6 +181,7 @@ const App = () => {
             pasteText.trim()
             || inputs.name.trim()
             || inputs.discordName.trim()
+            || inputs.noMic
             || pendingRosterImport,
         );
         if (!hasUnsavedInput) return;
@@ -191,7 +193,7 @@ const App = () => {
 
         window.addEventListener('beforeunload', warnBeforeUnload);
         return () => window.removeEventListener('beforeunload', warnBeforeUnload);
-    }, [inputs.discordName, inputs.name, pasteText, pendingRosterImport]);
+    }, [inputs.discordName, inputs.name, inputs.noMic, pasteText, pendingRosterImport]);
 
     const addPlayer = () => {
         if (!inputs.name.trim()) {
@@ -228,7 +230,7 @@ const App = () => {
             tank: { tier: tTier, div: inputs.tDiv, score: getScore(TIERS.indexOf(tTier), inputs.tDiv), isPreferred: inputs.tPref, isAvoided: inputs.tAvoid },
             dps: { tier: dTier, div: inputs.dDiv, score: getScore(TIERS.indexOf(dTier), inputs.dDiv), isPreferred: inputs.dPref, isAvoided: inputs.dAvoid },
             sup: { tier: sTier, div: inputs.sDiv, score: getScore(TIERS.indexOf(sTier), inputs.sDiv), isPreferred: inputs.sPref, isAvoided: inputs.sAvoid },
-            noMic: existingPlayer?.noMic,
+            noMic: inputs.noMic,
         });
         const isEditing = editingPlayerId !== null;
         setPlayers(prev => isEditing
@@ -253,6 +255,7 @@ const App = () => {
         setInputs({
             name: player.name,
             discordName: player.discordName ?? '',
+            noMic: player.noMic ?? false,
             tTier: player.tank.tier,
             tDiv: getEditableDivision(player.tank.tier, player.tank.div),
             tPref: player.tank.isPreferred,

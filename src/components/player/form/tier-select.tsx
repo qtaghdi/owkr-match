@@ -14,10 +14,14 @@ interface TierSelectProps {
         dTier: string; dDiv: string; dPref: boolean; dAvoid: boolean;
         sTier: string; sDiv: string; sPref: boolean; sAvoid: boolean;
     };
-    setInputs: React.Dispatch<React.SetStateAction<TierSelectProps['inputs'] & { name: string; discordName: string }>>;
+    setInputs: React.Dispatch<React.SetStateAction<PlayerFormInputs>>;
 }
 
-type PlayerFormInputs = TierSelectProps['inputs'] & { name: string; discordName: string };
+type PlayerFormInputs = TierSelectProps['inputs'] & {
+    name: string;
+    discordName: string;
+    noMic: boolean;
+};
 
 const normalizeInputPreferences = (inputs: PlayerFormInputs): PlayerFormInputs => {
     const preferences = normalizeRolePreferences({
