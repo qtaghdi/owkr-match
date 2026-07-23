@@ -51,6 +51,7 @@ const BalanceSummary = ({ matchResult }: BalanceSummaryProps) => {
 
     return (
         <section
+            id="balance-summary"
             data-exclude-export
             className="rounded-xl border border-slate-800/80 bg-surface-elevated/70 p-3.5"
             aria-labelledby="balance-summary-title"
@@ -94,7 +95,7 @@ const BalanceSummary = ({ matchResult }: BalanceSummaryProps) => {
                 ))}
             </dl>
 
-            <div className="mt-2.5 flex flex-wrap items-center gap-2 text-[11px]">
+            <div id="balance-exceptions" className="mt-2.5 flex flex-wrap items-center gap-2 rounded-md text-[11px]">
                 <span className="inline-flex items-center gap-1 text-slate-500">
                     <ShieldCheck size={12} aria-hidden="true" />
                     배정 예외

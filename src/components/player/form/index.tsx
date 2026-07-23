@@ -92,6 +92,7 @@ const PlayerForm = ({
     onCancelEdit,
 }: PlayerFormProps) => {
     const reduceMotion = useReducedMotion();
+    const inputScrollRef = React.useRef<HTMLDivElement>(null);
     const animation = reduceMotion
         ? { duration: 0 }
         : { duration: 0.16, ease: [0.22, 1, 0.36, 1] as const };
@@ -100,6 +101,10 @@ const PlayerForm = ({
         : failedParses.length > 0
             ? `읽지 못한 항목 ${failedParses.length}명 확인 필요`
             : summary || '참가자 입력이 접혀 있습니다';
+
+    React.useEffect(() => {
+        inputScrollRef.current?.scrollTo({ top: 0 });
+    }, [mode]);
 
     const handleRemoveFailed = (name: string) => {
         setFailedParses(prev => prev.filter(n => n !== name));
@@ -112,7 +117,7 @@ const PlayerForm = ({
     };
 
     return (
-        <section className="card shrink-0 overflow-hidden p-0" aria-label="참가자 입력">
+        <section id="player-input" className="card scroll-mt-24 shrink-0 overflow-hidden p-0" aria-label="참가자 입력">
             <div className="flex min-h-14 items-center gap-3 px-4 py-3">
                 <div className="flex min-w-0 flex-1 items-center gap-3">
                     {isCollapsed ? (
@@ -171,13 +176,20 @@ const PlayerForm = ({
                         animate={{ height: 'auto', opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
                         transition={animation}
-                        className="overflow-hidden"
+                        className="overflow-hidden border-t border-slate-800/50"
                     >
-                        <div className="custom-scrollbar px-4 pb-4 pr-3 xl:max-h-[calc(44dvh-3.5rem)] xl:overflow-y-auto xl:overscroll-contain">
+                        <div
+                            ref={inputScrollRef}
+                            role="region"
+                            aria-label="참가자 입력 내용"
+                            tabIndex={0}
+                            className="custom-scrollbar scroll-region px-4 pb-4 pr-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-400/60 xl:max-h-[calc(44dvh-3.5rem)] xl:overflow-y-auto xl:overscroll-contain"
+                        >
 
                             {/* Tab Navigation */}
-                            <div className="mb-4 grid grid-cols-3 gap-1 rounded-xl bg-surface p-1" role="group" aria-label="입력 방식">
+                            <div id="player-input-tabs" className="mb-4 grid grid-cols-3 gap-1 rounded-xl bg-surface p-1 xl:sticky xl:top-0 xl:z-10 xl:-mx-1 xl:bg-surface-elevated/95 xl:pb-2 xl:backdrop-blur" role="group" aria-label="입력 방식">
                             <button
+                                id="discord-input-tab"
                                 type="button"
                                 aria-pressed={mode === 'discord'}
                                 onClick={() => onModeChange('discord')}
@@ -191,6 +203,7 @@ const PlayerForm = ({
                                 채팅 붙여넣기
                             </button>
                             <button
+                                id="manual-input-tab"
                                 type="button"
                                 aria-pressed={mode === 'manual'}
                                 onClick={() => onModeChange('manual')}
@@ -204,6 +217,7 @@ const PlayerForm = ({
                                 수동 입력
                             </button>
                             <button
+                                id="participant-check-tab"
                                 type="button"
                                 aria-pressed={mode === 'mentions'}
                                 onClick={() => onModeChange('mentions')}

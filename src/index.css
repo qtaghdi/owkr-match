@@ -138,21 +138,42 @@
     touch-action: manipulation;
 }
 
+.custom-scrollbar {
+    scrollbar-color: #475569 rgb(15 23 42 / 0.45);
+    scrollbar-width: thin;
+}
+
 .custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
+    width: 8px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
+    background: rgb(15 23 42 / 0.45);
+    border-radius: 999px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: #334155;
-    border-radius: 3px;
+    background: #475569;
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background-clip: padding-box;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: #475569;
+    background-color: #64748b;
+}
+
+@media (min-width: 1280px) {
+    .scroll-region {
+        scrollbar-gutter: stable;
+    }
+}
+
+[data-guide-highlight='true'] {
+    border-radius: 0.75rem;
+    box-shadow: inset 0 0 0 2px rgb(34 211 238 / 0.95), inset 0 0 24px rgb(34 211 238 / 0.1);
+    scroll-margin-top: 6rem;
+    scroll-margin-bottom: 14rem;
 }
 
 .tab-active {

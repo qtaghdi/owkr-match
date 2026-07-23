@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { SAMPLE_ROSTER } from '../../constants';
 import { parseLineToPlayer, parseMultipleLines } from './index';
 
 const RECENT_PARTICIPANTS = `
@@ -47,6 +48,16 @@ zzuzzu#31457 플(배치X) ? / 골(배치X) ? / 마4! (복귀유저)
 **맹물**역할 아이콘, 다이아 — **어제 오후 3:24**
 둥댕#3222 (예상 다5)?/ 다3? / 마3!
 `;
+
+describe('가이드 예시 명단', () => {
+    it('실제 참가자 10명과 마이크 미사용 상태를 파싱한다', () => {
+        const result = parseMultipleLines(SAMPLE_ROSTER);
+
+        expect(result.players).toHaveLength(10);
+        expect(result.failedLines).toHaveLength(0);
+        expect(result.players.at(-1)?.noMic).toBe(true);
+    });
+});
 
 describe('parseMultipleLines', () => {
     it('디스코드 헤더, 설명, 예상 티어와 마이크 표기를 함께 파싱한다', () => {

@@ -59,7 +59,7 @@ const MatchResult = ({
     const selectedSwapPlayer = getSelectedSwapPlayer(matchResult, swapSource);
 
     return (
-        <div className="space-y-4">
+        <div id="match-result" className="space-y-4">
             {isStale && (
                 <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-amber-200" role="status">
                     <AlertTriangle size={17} className="mt-0.5 shrink-0 text-amber-400" aria-hidden="true" />
@@ -73,6 +73,7 @@ const MatchResult = ({
             <BalanceSummary matchResult={matchResult} />
 
             <div
+                id="swap-guide"
                 data-exclude-export
                 className={`flex min-h-11 flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2 text-xs ${
                     selectedSwapPlayer
@@ -161,6 +162,7 @@ const MatchResult = ({
                 </div>
 
                 {/* 다른 조합 (캡처 제외) */}
+                <div id="alternative-results" className="rounded-lg">
                 {alternatives.length > 0 ? (
                     <div className="space-y-2 px-1">
                         <div className="text-sm text-slate-500">다른 팀 조합</div>
@@ -200,9 +202,10 @@ const MatchResult = ({
                         다른 팀 조합 계산 중…
                     </div>
                 ) : null}
+                </div>
 
                 {/* 하단 컨트롤 (캡처 제외) */}
-                <div className="flex justify-end px-1">
+                <div id="result-share-controls" className="flex justify-end rounded-lg px-1">
                     <CopyButton status={copyStatus} onClick={handleCopyImage} />
                 </div>
             </div>

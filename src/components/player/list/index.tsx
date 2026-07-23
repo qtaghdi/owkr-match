@@ -1,4 +1,4 @@
-import { useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { AlertCircle, Clock, MicOff, Pencil, Trash2, Users } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import type { Player } from '../../../types';
@@ -23,10 +23,15 @@ const PlayerList = ({ participants, waitlist, onEditPlayer, onRemovePlayer, onCl
     const [activeTab, setActiveTab] = useState<PlayerListTab>('participants');
     const participantsTabRef = useRef<HTMLButtonElement>(null);
     const waitlistTabRef = useRef<HTMLButtonElement>(null);
+    const listScrollRef = useRef<HTMLDivElement>(null);
     const participantCount = participants.length;
     const waitlistCount = waitlist.length;
     const totalCount = participantCount + waitlistCount;
     const isReady = participantCount === 10;
+
+    useEffect(() => {
+        listScrollRef.current?.scrollTo({ top: 0 });
+    }, [activeTab]);
 
     const handleTabKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
         if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
@@ -104,7 +109,7 @@ const PlayerList = ({ participants, waitlist, onEditPlayer, onRemovePlayer, onCl
     );
 
     return (
-        <section className="card flex min-h-[320px] flex-1 flex-col overflow-hidden p-4 xl:min-h-0" aria-labelledby="player-management-title">
+        <section id="player-management" className="card flex min-h-[320px] scroll-mt-24 flex-1 flex-col overflow-hidden p-4 xl:min-h-0" aria-labelledby="player-management-title">
             {/* Header */}
             <div className="mb-3 flex shrink-0 items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-2">
@@ -189,7 +194,12 @@ const PlayerList = ({ participants, waitlist, onEditPlayer, onRemovePlayer, onCl
                 </button>
             </div>
 
-            <div className="custom-scrollbar min-h-0 flex-1 pr-1 xl:overflow-y-auto xl:overscroll-contain">
+            <div
+                ref={listScrollRef}
+                role="region"
+                aria-label={activeTab === 'participants' ? '참가자 스크롤 목록' : '대기열 스크롤 목록'}
+                className="custom-scrollbar scroll-region min-h-0 flex-1 pr-1 xl:overflow-y-auto xl:overscroll-contain xl:rounded-lg xl:border xl:border-slate-800/60 xl:bg-surface/20 xl:p-1.5"
+            >
                 {activeTab === 'participants' ? (
                     <div
                         id="participants-panel"

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { Shuffle, RefreshCcw, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { BookOpen, Shuffle, RefreshCcw, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
-import { TIERS, getScore } from './constants';
+import { SAMPLE_ROSTER, TIERS, getScore } from './constants';
 import { parseMultipleLines } from './utils/parser';
 import { recalculateMatchResult } from './utils/balance';
 import {
@@ -17,6 +17,7 @@ import type { RosterImportMode } from './utils/player';
 import PlayerForm, { type PlayerInputMode } from './components/player/form';
 import PlayerList from './components/player/list';
 import MatchResult from './components/match/result';
+import { OnboardingGuide } from './components/onboarding-guide';
 
 const STORAGE_KEYS = {
     PLAYERS: 'owkr_players',
@@ -149,7 +150,9 @@ const App = () => {
     );
     const [swapSource, setSwapSource] = useState<SwapSource | null>(null);
     const [toast, setToast] = useState<ToastState | null>(null);
+    const [isGuideOpen, setIsGuideOpen] = useState(false);
     const toastTimerRef = useRef<number | null>(null);
+    const activeGuide = isGuideOpen ? (result ? 'result' : 'start') : null;
 
     const dismissToast = () => {
         if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
@@ -514,6 +517,39 @@ const App = () => {
         });
     };
 
+    const handleDismissGuide = () => {
+        setIsGuideOpen(false);
+    };
+
+    const handleUseExampleRoster = () => {
+        if (players.length > 0) {
+            showToast('error', '기존 명단이 있어 더미 참가자를 추가하지 않았습니다.');
+            return;
+        }
+
+        const { players: examplePlayers, failedLines } = parseMultipleLines(SAMPLE_ROSTER);
+        if (examplePlayers.length !== 10 || failedLines.length > 0) {
+            showToast('error', '더미 참가자 명단을 불러오지 못했습니다.');
+            return;
+        }
+
+        commitRosterImport(examplePlayers, [], 'replace');
+    };
+
+    const handleGuideInputMode = (mode: PlayerInputMode) => {
+        setInputMode(mode);
+        setIsInputCollapsed(false);
+    };
+
+    const handleToggleGuide = () => {
+        if (isGuideOpen) {
+            setIsGuideOpen(false);
+            return;
+        }
+        if (!result) setIsInputCollapsed(false);
+        setIsGuideOpen(true);
+    };
+
     // 참여 명단 (첫 10명)과 대기 명단 (나머지) 분리
     const participants = players.slice(0, 10);
     const waitlist = players.slice(10);
@@ -534,7 +570,7 @@ const App = () => {
             </a>
             {/* Header */}
             <header className="sticky top-0 z-50 bg-surface/80 backdrop-blur-xl border-b border-slate-800/50">
-                <div className="mx-auto flex h-16 max-w-[1600px] items-center px-4 md:px-8">
+                <div className="mx-auto flex h-16 max-w-[1600px] items-center justify-between gap-4 px-4 md:px-8">
                     <motion.h1
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
@@ -543,6 +579,16 @@ const App = () => {
                         OWKR Match
                     </motion.h1>
 
+                    <button
+                        type="button"
+                        onClick={handleToggleGuide}
+                        aria-expanded={isGuideOpen}
+                        aria-controls="onboarding-guide"
+                        className="inline-flex min-h-9 touch-manipulation items-center gap-1.5 rounded-md px-2.5 text-sm font-medium text-slate-400 transition-colors hover:bg-white/5 hover:text-cyan-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/70"
+                    >
+                        <BookOpen size={15} aria-hidden="true" />
+                        사용 가이드
+                    </button>
                 </div>
             </header>
 
@@ -615,6 +661,7 @@ const App = () => {
                                     </button>
                                 )}
                                 <button
+                                    id="matching-action"
                                     type="button"
                                     onClick={handleRunMatching}
                                     disabled={isBalancing || !isReady}
@@ -692,6 +739,19 @@ const App = () => {
                     </div>
                 </div>
             </main>
+            <AnimatePresence>
+                {activeGuide && (
+                    <OnboardingGuide
+                        key={activeGuide}
+                        variant={activeGuide}
+                        onDismiss={handleDismissGuide}
+                        onSelectInputMode={activeGuide === 'start' ? handleGuideInputMode : undefined}
+                        onUseExample={activeGuide === 'start' && players.length === 0
+                            ? handleUseExampleRoster
+                            : undefined}
+                    />
+                )}
+            </AnimatePresence>
             <AnimatePresence>
                 {toast && (
                     <motion.div
