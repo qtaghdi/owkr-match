@@ -19,6 +19,47 @@ const createPlayer = (index: number, preferredRole: Role): Player => ({
     sup: createRank('SUPPORT', preferredRole),
 });
 
+const createFlexibleRank = (score: number, isAvoided: boolean): Rank => ({
+    tier: 'DIAMOND',
+    div: 3,
+    score,
+    isPreferred: false,
+    isAvoided,
+});
+
+const createTankSafeguardPlayers = (secondTankScore: number): Player[] => {
+    const roleScores = {
+        TANK: 2200,
+        DPS: 2200,
+        SUPPORT: 2200,
+    } as const;
+    const createRolePlayer = (
+        index: number,
+        role: Role,
+        tankScore = 5000,
+        allowDps = false,
+    ): Player => ({
+        id: index,
+        name: `Player${index}#1234`,
+        tank: createFlexibleRank(tankScore, role !== 'TANK'),
+        dps: createFlexibleRank(roleScores.DPS, role !== 'DPS' && !allowDps),
+        sup: createFlexibleRank(roleScores.SUPPORT, role !== 'SUPPORT'),
+    });
+
+    return [
+        createRolePlayer(1, 'TANK', 1000),
+        createRolePlayer(2, 'TANK', secondTankScore, true),
+        createRolePlayer(3, 'DPS', 1600),
+        createRolePlayer(4, 'DPS'),
+        createRolePlayer(5, 'DPS'),
+        createRolePlayer(6, 'DPS'),
+        createRolePlayer(7, 'SUPPORT'),
+        createRolePlayer(8, 'SUPPORT'),
+        createRolePlayer(9, 'SUPPORT'),
+        createRolePlayer(10, 'SUPPORT'),
+    ];
+};
+
 const getAssignmentSlots = (result: MatchResultData): Map<number, string> => {
     const slots = new Map<number, string>();
     const addTeam = (team: 'A' | 'B', assignment: MatchResultData['teamA']['assignment']) => {
@@ -78,6 +119,20 @@ describe('balancePlayers', () => {
         const players = roles.map((role, index) => createPlayer(index + 1, role));
 
         expect(balancePlayers(players)).toEqual(balancePlayers(players));
+    });
+
+    it('탱커 차이가 600점을 넘으면 비선호 배정을 허용해 안전 범위로 줄인다', () => {
+        const result = balancePlayers(createTankSafeguardPlayers(3000)).result;
+
+        expect(result.metrics?.roleDiffs.tank).toBeLessThanOrEqual(600);
+        expect(result.metrics?.avoidedAssignments).toBeGreaterThan(0);
+    });
+
+    it('탱커 차이가 600점 이내면 비선호가 없는 배정을 우선한다', () => {
+        const result = balancePlayers(createTankSafeguardPlayers(1500)).result;
+
+        expect(result.metrics?.roleDiffs.tank).toBe(500);
+        expect(result.metrics?.avoidedAssignments).toBe(0);
     });
 
     it('수동 역할 교체 후 팀 점수와 차이를 다시 계산한다', () => {

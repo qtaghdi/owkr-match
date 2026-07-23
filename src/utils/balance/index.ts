@@ -13,6 +13,7 @@ const PLAYER_COUNT = 10;
 const RESULT_COUNT = 5;
 const QUALITY_POOL_SIZE = 80;
 const MIN_ASSIGNMENT_CHANGES = 3;
+const MAX_TANK_MATCHUP_DIFF = 600;
 const ROLES: Role[] = ['TANK', 'DPS', 'SUPPORT'];
 
 const SCORE_WEIGHTS = {
@@ -45,6 +46,7 @@ interface Candidate {
     unrankedAssignments: number;
     compositeScore: number;
     realDiff: number;
+    tankDiff: number;
 }
 
 /**
@@ -175,10 +177,27 @@ const calculateMicImbalance = (teamA: Player[], teamB: Player[]): number => {
 };
 
 /**
- * @description 후보 우선순위를 선호·비선호·미배치·종합 점수 순으로 비교한다.
+ * @description 탱커 차이가 허용 범위를 넘으면 안전 범위 진입과 격차 축소를 비선호 배정보다 우선한다.
+ */
+const compareTankSafeguard = (candidate: Candidate, existing: Candidate): number => {
+    const candidateExceedsLimit = candidate.tankDiff > MAX_TANK_MATCHUP_DIFF;
+    const existingExceedsLimit = existing.tankDiff > MAX_TANK_MATCHUP_DIFF;
+
+    if (candidateExceedsLimit !== existingExceedsLimit) {
+        return candidateExceedsLimit ? 1 : -1;
+    }
+
+    return candidateExceedsLimit
+        ? candidate.tankDiff - existing.tankDiff
+        : 0;
+};
+
+/**
+ * @description 후보를 선호 위반·탱커 안전장치·비선호·미배치·종합 점수 순으로 비교한다.
  */
 const compareCandidates = (candidate: Candidate, existing: Candidate): number =>
     candidate.preferenceViolations - existing.preferenceViolations
+    || compareTankSafeguard(candidate, existing)
     || candidate.avoidedAssignments - existing.avoidedAssignments
     || candidate.unrankedAssignments - existing.unrankedAssignments
     || candidate.compositeScore - existing.compositeScore
@@ -356,6 +375,7 @@ export const balancePlayers = (players: Player[]): BalanceResult => {
         for (const teamA of teamAAssignments) {
             for (const teamB of teamBAssignments) {
                 const realDiff = Math.abs(teamA.realScore - teamB.realScore);
+                const tankDiff = Math.abs(teamA.roleScores.tank - teamB.roleScores.tank);
                 const roleMatchupDiff = calculateRoleMatchupDiff(teamA, teamB);
                 const teamVariance = teamA.teamStdDev + teamB.teamStdDev;
 
@@ -370,6 +390,7 @@ export const balancePlayers = (players: Player[]): BalanceResult => {
                         + teamVariance * SCORE_WEIGHTS.teamVariance
                         + micImbalance * SCORE_WEIGHTS.micImbalance,
                     realDiff,
+                    tankDiff,
                 });
             }
         }
